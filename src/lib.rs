@@ -28,17 +28,19 @@ enum BitField {
 
 #[proc_macro_attribute]
 pub fn register(_: TokenStream, input: TokenStream) -> TokenStream {
+    use syn::*;
+
     println!("{}", input);
 
     let s = input.to_string();
-    let ast = syn::parse_derive_input(&s).unwrap();
+    let ast = parse_derive_input(&s).unwrap();
 
     println!("ident: {}", ast.ident);
 
     let fields = match ast.body {
-        syn::Body::Enum(_) => panic!("enum not supported"),
-        syn::Body::Struct(x) => match x {
-            syn::VariantData::Struct(fields) => fields,
+        Body::Enum(_) => panic!("enum not supported"),
+        Body::Struct(x) => match x {
+            VariantData::Struct(fields) => fields,
             _ => panic!("tuple and unit not supported")
         }
     };
@@ -46,27 +48,53 @@ pub fn register(_: TokenStream, input: TokenStream) -> TokenStream {
     for field in &fields {
         let ident = field.ident.clone().unwrap();
         let ty = match field.clone().ty {
-            syn::Ty::Path(_, path) => path.segments[0].ident.clone(),
+            Ty::Path(_, path) => path.segments[0].ident.clone(),
             _ => panic!("only path types supported"),
         };
 
-        let mut bitfield: Option<BitField> = None;
+        let mut from: Option<u8> = None;
+        let mut to: Option<u8> = None;
+        let mut at: Option<u8> = None;
 
         for attr in &field.attrs {
-            if let syn::MetaItem::List(attr_ident, attr_nest) = attr.clone().value {
-                println!("found attribute: {}", attr_ident);
+            if let MetaItem::List(attr_ident, attr_nest) = attr.clone().value {
                 if attr_ident == "bitfield" {
-                    println!("found bitfield attribute: {:?}", attr_nest);
+                    for attr_nest_item in &attr_nest {
+                        if let NestedMetaItem::MetaItem(nest_metaitem) = attr_nest_item.clone() {
+                            if let MetaItem::NameValue(nv_ident, nv_lit) = nest_metaitem.clone() {
+                                if let Lit::Int(nv_value, _) = nv_lit {
+                                    match nv_ident.as_ref() {
+                                        "at" => (at = Some(nv_value as u8)),
+                                        "from" => (from = Some(nv_value as u8)),
+                                        "to" => (to = Some(nv_value as u8)),
+                                        _ => panic!("unsupported param name (use 'at' or 'from'/'to')"),
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
 
-        bitfield = match 1 {
-            0 => Some(BitField::Single(10)),
-            1 => Some(BitField::Range(std::ops::Range{start: 3, end: 5})),
-            _ => panic!("wrong bitfield position"),
+        if (from.is_some() || to.is_some()) && at.is_some() {
+            panic!("select 'at' or 'from'/'to' parameters, not both");
+        }
+
+        if from.is_some() ^ to.is_some() {
+            panic!("select 'from' and 'to' parameters together");
+        }
+
+        if from.is_none() && to.is_none() && at.is_none() {
+            panic!("select bit parameters (use #[bitfield(at=x or from=x to=y)])");
+        }
+
+        let bitfield: BitField = if from.is_some() && to.is_some() {
+            BitField::Range(std::ops::Range{start: from.unwrap(), end: to.unwrap()})
+        } else {
+            BitField::Single(at.unwrap())
         };
-        
+
         println!("field {} @{:?}: {}", ident, bitfield, ty);
     }
 
@@ -85,7 +113,13 @@ Struct(
                     style: Outer,
                     value: List(
                         Ident("bitfield"),
-                        [MetaItem(NameValue(Ident("at"), Int(0, Unsuffixed)))]
+                        [
+                            MetaItem(
+                                NameValue(
+                                    Ident("at"), Int(0, Unsuffixed)
+                                )
+                            )
+                        ]
                     ),
                     is_sugared_doc: false
                 }
