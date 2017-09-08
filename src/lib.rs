@@ -105,10 +105,12 @@ pub fn register(_: TokenStream, input: TokenStream) -> TokenStream {
         };
 
         println!("field {} @{:?}: {}", ident, bitfield, ty_str);
+
+        bitfields.push(BitFields {bitfield: bitfield, ident: ident, ty: ty});
     }
 
     // return input;
-    return output_struct(&ast.ident).parse().unwrap();
+    return output_struct(&ast.ident, &bitfields).parse().unwrap();
 }
 
 /*
