@@ -8,8 +8,21 @@ extern crate quote;
 
 use proc_macro::TokenStream;
 
+use syn::*;
 
-fn output_struct(name: &syn::Ident) -> quote::Tokens {
+#[derive(Debug)]
+enum BitField {
+    Single(u8),
+    Range(std::ops::Range<u8>)
+}
+
+struct BitFields {
+    bitfield: BitField,
+    ident: Ident,
+    ty: Ty
+}
+
+fn output_struct(name: &Ident, bitfields: &Vec<BitFields>) -> quote::Tokens {
     quote! {
         struct #name (u8);
         impl #name {
@@ -20,15 +33,8 @@ fn output_struct(name: &syn::Ident) -> quote::Tokens {
     }
 }
 
-#[derive(Debug)]
-enum BitField {
-    Single(u8),
-    Range(std::ops::Range<u8>)
-}
-
 #[proc_macro_attribute]
 pub fn register(_: TokenStream, input: TokenStream) -> TokenStream {
-    use syn::*;
 
     println!("{}", input);
 
@@ -45,12 +51,16 @@ pub fn register(_: TokenStream, input: TokenStream) -> TokenStream {
         }
     };
 
+    let mut bitfields: Vec<BitFields> = vec![];
+
     for field in &fields {
         let ident = field.ident.clone().unwrap();
-        let ty = match field.clone().ty {
+        let ty_str = match field.clone().ty {
             Ty::Path(_, path) => path.segments[0].ident.clone(),
             _ => panic!("only path types supported"),
         };
+
+        let ty = field.clone().ty;
 
         let mut from: Option<u8> = None;
         let mut to: Option<u8> = None;
@@ -60,17 +70,16 @@ pub fn register(_: TokenStream, input: TokenStream) -> TokenStream {
             if let MetaItem::List(attr_ident, attr_nest) = attr.clone().value {
                 if attr_ident == "bitfield" {
                     for attr_nest_item in &attr_nest {
-                        if let NestedMetaItem::MetaItem(nest_metaitem) = attr_nest_item.clone() {
-                            if let MetaItem::NameValue(nv_ident, nv_lit) = nest_metaitem.clone() {
-                                if let Lit::Int(nv_value, _) = nv_lit {
-                                    match nv_ident.as_ref() {
-                                        "at" => (at = Some(nv_value as u8)),
-                                        "from" => (from = Some(nv_value as u8)),
-                                        "to" => (to = Some(nv_value as u8)),
-                                        _ => panic!("unsupported param name (use 'at' or 'from'/'to')"),
-                                    }
+                        match attr_nest_item.clone() {
+                            NestedMetaItem::MetaItem(MetaItem::NameValue(nv_ident, Lit::Int(nv_value, _))) => {
+                                match nv_ident.as_ref() {
+                                    "at" => (at = Some(nv_value as u8)),
+                                    "from" => (from = Some(nv_value as u8)),
+                                    "to" => (to = Some(nv_value as u8)),
+                                    _ => panic!("unsupported param name (use 'at' or 'from'/'to')"),
                                 }
                             }
+                            _ => {}
                         }
                     }
                 }
@@ -95,7 +104,7 @@ pub fn register(_: TokenStream, input: TokenStream) -> TokenStream {
             BitField::Single(at.unwrap())
         };
 
-        println!("field {} @{:?}: {}", ident, bitfield, ty);
+        println!("field {} @{:?}: {}", ident, bitfield, ty_str);
     }
 
     // return input;
