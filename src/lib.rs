@@ -50,13 +50,8 @@ fn output_struct(name: &Ident, bitfields: &Vec<BitField>) -> quote::Tokens {
 
 #[proc_macro_attribute]
 pub fn register(_: TokenStream, input: TokenStream) -> TokenStream {
-
-    println!("{}", input);
-
     let s = input.to_string();
     let ast = parse_derive_input(&s).unwrap();
-
-    println!("ident: {}", ast.ident);
 
     let fields = match ast.body {
         Body::Enum(_) => panic!("enum not supported"),
@@ -127,19 +122,41 @@ pub fn register(_: TokenStream, input: TokenStream) -> TokenStream {
 
         println!("field {} @{:?}", ident, position);
 
-        impl_body = quote! {
-            #impl_body
+        match position {
+            BitFieldPosition::Single(x) => {
+                let mask: u8 = (1 << x);
+                impl_body = quote! {
+                    #impl_body
 
-            pub fn #ident(&self) -> #ty {
-                return std::convert::From::from(0)
-            }
+                    pub fn #ident(&self) -> #ty {
+                        let raw: u8 = (self.0[0] & #mask) >> #x;
+                        return std::convert::From::from(raw);
+                    }
+                }
+            },
+            BitFieldPosition::Range(range) => {
+                let from: u8 = range.start;
+                let to = range.end;
+
+                let size = to - from + 1;
+                let mask: u8 = ((1 << size) - 1) << from;
+
+                impl_body = quote! {
+                    #impl_body
+
+                    pub fn #ident(&self) -> #ty {
+                        let raw: u8 = (self.0[0] & #mask) >> #from;
+                        return std::convert::From::from(raw);
+                    }
+                }
+            },
         }
     }
 
     let name = &ast.ident;
 
     return (quote! {
-        struct #name (u8);
+        struct #name ([u8;3]);
         impl #name {
             #impl_body
         }
