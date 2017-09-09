@@ -11,27 +11,42 @@ use proc_macro::TokenStream;
 use syn::*;
 
 #[derive(Debug)]
-enum BitField {
+enum BitFieldPosition {
     Single(u8),
     Range(std::ops::Range<u8>)
 }
 
-struct BitFields {
-    bitfield: BitField,
+struct BitField {
+    position: BitFieldPosition,
     ident: Ident,
     ty: Ty
 }
 
-fn output_struct(name: &Ident, bitfields: &Vec<BitFields>) -> quote::Tokens {
-    quote! {
-        struct #name (u8);
-        impl #name {
-            pub fn get_bit() {
+/*
+fn output_struct(name: &Ident, bitfields: &Vec<BitField>) -> quote::Tokens {
+    let mut impl_body = quote! {};
+
+    for bitfield in &bitfields.into_iter() {
+        println!("field {} @{:?}", bitfield.ident, bitfield.position);
+        let ident = bitfield.ident;
+        let ty = bitfield.ty;
+
+        impl_body = quote! {
+            #impl_body
+            get_#ident(&self) -> #ty {
 
             }
         }
+    };
+
+    quote! {
+        struct #name (u8);
+        impl #name {
+            #impl_body
+        }
     }
 }
+*/
 
 #[proc_macro_attribute]
 pub fn register(_: TokenStream, input: TokenStream) -> TokenStream {
@@ -51,7 +66,9 @@ pub fn register(_: TokenStream, input: TokenStream) -> TokenStream {
         }
     };
 
-    let mut bitfields: Vec<BitFields> = vec![];
+    let mut bitfields: Vec<BitField> = vec![];
+
+    let mut impl_body = quote! {};
 
     for field in &fields {
         let ident = field.ident.clone().unwrap();
@@ -98,19 +115,38 @@ pub fn register(_: TokenStream, input: TokenStream) -> TokenStream {
             panic!("select bit parameters (use #[bitfield(at=x or from=x to=y)])");
         }
 
-        let bitfield: BitField = if from.is_some() && to.is_some() {
-            BitField::Range(std::ops::Range{start: from.unwrap(), end: to.unwrap()})
+        let position: BitFieldPosition = if from.is_some() && to.is_some() {
+            BitFieldPosition::Range(std::ops::Range{start: from.unwrap(), end: to.unwrap()})
         } else {
-            BitField::Single(at.unwrap())
+            BitFieldPosition::Single(at.unwrap())
         };
 
-        println!("field {} @{:?}: {}", ident, bitfield, ty_str);
+        println!("field {} @{:?}: {}", ident, position, ty_str);
 
-        bitfields.push(BitFields {bitfield: bitfield, ident: ident, ty: ty});
+        // bitfields.push(BitField {position: position, ident: ident, ty: ty});
+
+        println!("field {} @{:?}", ident, position);
+
+        impl_body = quote! {
+            #impl_body
+
+            pub fn #ident(&self) -> #ty {
+                return std::convert::From::from(0)
+            }
+        }
     }
 
+    let name = &ast.ident;
+
+    return (quote! {
+        struct #name (u8);
+        impl #name {
+            #impl_body
+        }
+    }).parse().unwrap();
+
     // return input;
-    return output_struct(&ast.ident, &bitfields).parse().unwrap();
+    // return output_struct(&ast.ident, &bitfields).parse().unwrap();
 }
 
 /*
