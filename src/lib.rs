@@ -1,14 +1,13 @@
 #![feature(proc_macro)]
 
 extern crate proc_macro;
+use proc_macro::TokenStream;
+
 extern crate syn;
+use syn::*;
 
 #[macro_use]
 extern crate quote;
-
-use proc_macro::TokenStream;
-
-use syn::*;
 
 #[derive(Debug)]
 enum BitFieldPosition {
@@ -16,37 +15,108 @@ enum BitFieldPosition {
     Range(std::ops::Range<u8>)
 }
 
+#[derive(Debug)]
 struct BitField {
     position: BitFieldPosition,
     ident: Ident,
     ty: Ty
 }
 
-/*
+
 fn output_struct(name: &Ident, bitfields: &Vec<BitField>) -> quote::Tokens {
     let mut impl_body = quote! {};
+    
+    let starts: Vec<u8> = bitfields.iter().map(|x| match &x.position {
+        &BitFieldPosition::Single(x) => x,
+        &BitFieldPosition::Range(ref range) => range.start
+    }).collect();
 
-    for bitfield in &bitfields.into_iter() {
-        println!("field {} @{:?}", bitfield.ident, bitfield.position);
-        let ident = bitfield.ident;
-        let ty = bitfield.ty;
+    let max_starts = starts.iter().fold(None, |max, x| match max {
+        None => Some(x),
+        Some(y) => Some(std::cmp::max(x, y))
+    }).unwrap();
 
-        impl_body = quote! {
-            #impl_body
-            get_#ident(&self) -> #ty {
+    let base_size: usize = (*max_starts as usize / 8) + 1;
 
-            }
+    for bitfield in bitfields {
+        println!("iter field {} @{:?}", bitfield.ident, bitfield.position);
+
+        let getter_str = format!("get_{}", bitfield.ident.as_ref());
+        let getter: Ident = From::from(getter_str.as_str());
+
+        let setter_str = format!("set_{}", bitfield.ident.as_ref());
+        let setter: Ident = From::from(setter_str.as_str());
+
+        let ty = &bitfield.ty;
+
+        match &bitfield.position {
+            &BitFieldPosition::Single(x) => {
+                let mask: u8 = 1 << (x % 8);
+                let nmask: u8 = !mask;
+
+                let byteidx: usize = x as usize / 8;
+
+                let shift = x % 8;
+
+                impl_body = quote! {
+                    #impl_body
+
+                    pub fn #getter(&self) -> #ty {
+                        let raw: u8 = (self.0[#byteidx] & #mask) >> #shift;
+                        return std::convert::From::from(raw);
+                    }
+
+                    pub fn #setter(&mut self, value: #ty) {
+                        let raw: u8 = std::convert::Into::into(value);
+                        self.0[#byteidx] &= #nmask;
+                        self.0[#byteidx] |= (raw & 1) << #shift;
+                    }
+                }
+            },
+            &BitFieldPosition::Range(ref range) => {
+                let from = range.start;
+                let to = range.end;
+
+                let size = to - from + 1;
+                let type_mask: u8 = (1 << size) - 1;
+                let mask: u8 = type_mask << (from % 8);
+                let nmask: u8 = !mask;
+
+                let byteidx: usize = from as usize / 8;
+
+                let shift = from % 8;
+
+                impl_body = quote! {
+                    #impl_body
+
+                    pub fn #getter(&self) -> #ty {
+                        let raw: u8 = (self.0[#byteidx] & #mask) >> #shift;
+                        return std::convert::From::from(raw);
+                    }
+
+                    pub fn #setter(&mut self, value: #ty) {
+                        let raw: u8 = std::convert::Into::into(value);
+                        self.0[#byteidx] &= #nmask;
+                        self.0[#byteidx] |= (raw & #type_mask) << #shift;
+                    }
+                }
+            },
         }
     };
 
-    quote! {
-        struct #name (u8);
+    return quote! {
+        struct #name ([u8;#base_size]);
+        impl Default for #name {
+            fn default() -> Self {
+                return #name ([0;#base_size]);
+            }
+        }
         impl #name {
+
             #impl_body
         }
     }
 }
-*/
 
 #[proc_macro_attribute]
 pub fn register(_: TokenStream, input: TokenStream) -> TokenStream {
@@ -61,17 +131,10 @@ pub fn register(_: TokenStream, input: TokenStream) -> TokenStream {
         }
     };
 
+    #[derive(Debug)]
     let mut bitfields: Vec<BitField> = vec![];
 
-    let mut impl_body = quote! {};
-
     for field in &fields {
-        let ident = field.ident.clone().unwrap();
-        let ty_str = match &field.ty {
-            &Ty::Path(_, ref path) => path.segments[0].ident.clone(),
-            _ => panic!("only path types supported"),
-        };
-
         let ty = field.clone().ty;
 
         let mut from: Option<u8> = None;
@@ -116,125 +179,18 @@ pub fn register(_: TokenStream, input: TokenStream) -> TokenStream {
             BitFieldPosition::Single(at.unwrap())
         };
 
-        println!("field {} @{:?}: {}", ident, position, ty_str);
-
-        // println!("field {} @{:?}", ident, position);
-
-        let getter_str = format!("get_{}", ident.as_ref());
-        let getter: Ident = From::from(getter_str.as_str());
-
-        let setter_str = format!("set_{}", ident.as_ref());
-        let setter: Ident = From::from(setter_str.as_str());
-
-        match &position {
-            &BitFieldPosition::Single(x) => {
-                let mask: u8 = 1 << x;
-                let nmask: u8 = !mask;
-
-                impl_body = quote! {
-                    #impl_body
-
-                    pub fn #getter(&self) -> #ty {
-                        let raw: u8 = (self.0[0] & #mask) >> #x;
-                        return std::convert::From::from(raw);
-                    }
-
-                    pub fn #setter(&mut self, value: #ty) {
-                        let raw: u8 = std::convert::Into::into(value);
-                        self.0[0] &= #nmask;
-                        self.0[0] |= (raw & 1) << #x;
-                    }
-                }
-            },
-            &BitFieldPosition::Range(ref range) => {
-                let from: u8 = range.start;
-                let to = range.end;
-
-                let size = to - from + 1;
-                let type_mask: u8 = (1 << size) - 1;
-                let mask: u8 = type_mask << from;
-                let nmask: u8 = !mask;
-
-                impl_body = quote! {
-                    #impl_body
-
-                    pub fn #getter(&self) -> #ty {
-                        let raw: u8 = (self.0[0] & #mask) >> #from;
-                        return std::convert::From::from(raw);
-                    }
-
-                    pub fn #setter(&mut self, value: #ty) {
-                        let raw: u8 = std::convert::Into::into(value);
-                        self.0[0] &= #nmask;
-                        self.0[0] |= (raw & #type_mask) << #from;
-                    }
-                }
-            },
+        let ident = field.ident.clone().unwrap();
+        let ty_str = match &field.ty {
+            &Ty::Path(_, ref path) => path.segments[0].ident.clone(),
+            _ => panic!("only path types supported"),
         };
+
+        println!("field {} @{:?}: {}", ident, position, ty_str);
 
         bitfields.push(BitField {position: position, ident: ident, ty: ty});
     }
 
     let name = &ast.ident;
 
-    return (quote! {
-        struct #name ([u8;3]);
-        impl Default for #name {
-            fn default() -> Self {
-                return #name ([0,0,0]);
-            }
-        }
-        impl #name {
-
-            #impl_body
-        }
-    }).parse().unwrap();
-
-    // return input;
-    // return output_struct(&ast.ident, &bitfields).parse().unwrap();
+    return output_struct(name, &bitfields).parse().unwrap();
 }
-
-/*
-Struct(
-    Struct([
-        Field {
-            ident: Some(Ident("foo")),
-            vis: Inherited,
-            attrs: [
-                Attribute {
-                    style: Outer,
-                    value: List(
-                        Ident("bitfield"),
-                        [
-                            MetaItem(
-                                NameValue(
-                                    Ident("at"), Int(0, Unsuffixed)
-                                )
-                            )
-                        ]
-                    ),
-                    is_sugared_doc: false
-                }
-            ],
-            ty: Path(
-                None,
-                Path {
-                    global: false,
-                    segments: [
-                        PathSegment {
-                            ident: Ident("u8"),
-                            parameters: AngleBracketed(
-                                AngleBracketedParameterData {
-                                    lifetimes: [],
-                                    types: [],
-                                    bindings: []
-                                }
-                            )
-                        }
-                    ]
-                }
-            )
-        }
-    ])
-)
-*/
