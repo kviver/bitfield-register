@@ -31,10 +31,7 @@ fn output_struct(name: &Ident, bitfields: &Vec<BitField>) -> quote::Tokens {
         &BitFieldPosition::Range(ref range) => range.start
     }).collect();
 
-    let max_starts = starts.iter().fold(None, |max, x| match max {
-        None => Some(x),
-        Some(y) => Some(std::cmp::max(x, y))
-    }).unwrap();
+    let max_starts = starts.iter().max().unwrap();
 
     let base_size: usize = (*max_starts as usize / 8) + 1;
 
@@ -62,14 +59,14 @@ fn output_struct(name: &Ident, bitfields: &Vec<BitField>) -> quote::Tokens {
                     #impl_body
 
                     pub fn #getter(&self) -> #ty {
-                        let raw: u8 = (self.0[#byteidx] & #mask) >> #shift;
+                        let raw: [u8;1] = [(self.0[#byteidx] & #mask) >> #shift];
                         return std::convert::From::from(raw);
                     }
 
                     pub fn #setter(&mut self, value: #ty) {
-                        let raw: u8 = std::convert::Into::into(value);
+                        let raw: [u8;1] = std::convert::Into::into(value);
                         self.0[#byteidx] &= #nmask;
-                        self.0[#byteidx] |= (raw & 1) << #shift;
+                        self.0[#byteidx] |= (raw[0] & 1) << #shift;
                     }
                 }
             },
@@ -86,18 +83,20 @@ fn output_struct(name: &Ident, bitfields: &Vec<BitField>) -> quote::Tokens {
 
                 let shift = from % 8;
 
+                let typesize: usize = size as usize / 8 + 1;
+
                 impl_body = quote! {
                     #impl_body
 
                     pub fn #getter(&self) -> #ty {
-                        let raw: u8 = (self.0[#byteidx] & #mask) >> #shift;
+                        let raw: [u8;#typesize] = [(self.0[#byteidx] & #mask) >> #shift];
                         return std::convert::From::from(raw);
                     }
 
                     pub fn #setter(&mut self, value: #ty) {
-                        let raw: u8 = std::convert::Into::into(value);
+                        let raw: [u8;#typesize] = std::convert::Into::into(value);
                         self.0[#byteidx] &= #nmask;
-                        self.0[#byteidx] |= (raw & #type_mask) << #shift;
+                        self.0[#byteidx] |= (raw[0] & #type_mask) << #shift;
                     }
                 }
             },
