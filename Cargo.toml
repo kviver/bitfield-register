@@ -4,6 +4,7 @@ version = "0.1.0"
 authors = ["Anper @ Kviver team <mail@s3f.ru>"]
 description = "Rust bitfield library for low-level registers"
 license-file = "LICENSE"
+license = "BSD 2-Clause"
 
 [dependencies]
 syn = "0.11.11"
