@@ -98,28 +98,31 @@ fn output_struct(name: &Ident, bitfields: &Vec<BitField>) -> quote::Tokens {
 
                 let mut setter_body = quote! {
                     let value_array: [u8;#value_size] = std::convert::Into::into(value);
-                    let mut raw: u8 = 0;
-                };
-
-                setter_body = quote! {
-                    #setter_body
-                    // raw += (value_array[#i] << #bit_shift);
+                    let mut raw: u8;
                 };
 
                 for i in 0..raw_size {
                     
                     if i < value_size {
-                        setter_body = quote! {
-                            #setter_body
-                            raw |= value_array[#i] << #bit_shift;
+                        if bit_shift == 0 {
+                            setter_body = quote! { #setter_body
+                                 raw = value_array[#i];
+                            }
+                        } else {
+                            setter_body = quote! { #setter_body
+                                raw = value_array[#i] << #bit_shift;
+                            }
+                        }
+                    } else {
+                        setter_body = quote! { #setter_body
+                            raw = 0;
                         }
                     }
 
                     if i != 0 {
                         let i_1 = i - 1;
                         if bit_shift != 0 {
-                            setter_body = quote! {
-                                #setter_body
+                            setter_body = quote! { #setter_body
                                 raw |= value_array[#i_1] >> (8 - #bit_shift);
                             }
                         }
@@ -128,19 +131,48 @@ fn output_struct(name: &Ident, bitfields: &Vec<BitField>) -> quote::Tokens {
                     let mask: u8 = if bit_end == 7 || i != raw_size - 1 {0xff}
                     else {(1 << (bit_end + 1)) - 1};
 
+                    let i_from_byte = i + from_byte;
+
                     if mask != 0xff {
-                        setter_body = quote! {
-                            #setter_body
-                            raw &= #mask;
+                        setter_body = quote! { #setter_body
+                            self.0[#i_from_byte] &= !#mask;
+                            self.0[#i_from_byte] |= raw & #mask;
+                        };
+                    } else {
+                        setter_body = quote! { #setter_body
+                            self.0[#i_from_byte] = raw;
                         };
                     }
+                }
+
+                let mut getter_body = quote! {
+                    let mut value_array: [u8;#value_size] = [0;#value_size];
+                };
+
+                for i in 0..value_size {
 
                     let i_from_byte = i + from_byte;
 
-                    setter_body = quote! {
-                        #setter_body
-                        self.0[#i_from_byte] &= !#mask;
-                        self.0[#i_from_byte] |= raw;
+                    let mask: u8 = if bit_end == 7 || i != raw_size - 1 {0xff}
+                    else {(1 << (bit_end + 1)) - 1};
+                    
+                    getter_body = quote! { #getter_body
+                        value_array[#i] = self.0[#i_from_byte] >> #bit_shift;
+                    };
+
+                    if i < raw_size - 1 {
+                        let i_from_byte = i + from_byte + 1;
+                        if bit_shift != 0 {
+                            getter_body = quote! { #getter_body
+                                value_array[#i] |= self.0[#i_from_byte] << (8 - #bit_shift);
+                            }
+                        }
+                    }
+
+                    if mask != 0xff {
+                        getter_body = quote! { #getter_body
+                            value_array[#i] &= #mask;
+                        };
                     }
                 }
 
@@ -148,17 +180,12 @@ fn output_struct(name: &Ident, bitfields: &Vec<BitField>) -> quote::Tokens {
                     #impl_body
 
                     pub fn #getter(&self) -> #ty {
-                        // let raw: [u8;#type_byte_size] = [(self.0[#from_byte] & #mask) >> #shift];
-                        //return std::convert::From::from(raw);
-                        return std::convert::From::from([0u8, 0u8]);
+                        #getter_body
+                        return std::convert::From::from(value_array);
                     }
 
                     pub fn #setter(&mut self, value: #ty) {
                         #setter_body
-
-                        /*for idx in 0..*/
-                        // self.0[#from_byte] &= #nmask;
-                        // self.0[#from_byte] |= (raw[0] & #type_mask) << #shift;
                     }
                 }
             },
