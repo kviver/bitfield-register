@@ -1,4 +1,5 @@
 #![feature(proc_macro)]
+#![recursion_limit = "128"]
 
 extern crate proc_macro;
 use proc_macro::TokenStream;
@@ -24,16 +25,17 @@ struct BitField {
 
 
 fn output_struct(name: &Ident, bitfields: &Vec<BitField>) -> quote::Tokens {
-    let mut impl_body = quote! {};
     
-    let starts: Vec<u8> = bitfields.iter().map(|x| match &x.position {
+    let ends: Vec<u8> = bitfields.iter().map(|x| match &x.position {
         &BitFieldPosition::Single(x) => x,
-        &BitFieldPosition::Range(ref range) => range.start
+        &BitFieldPosition::Range(ref range) => range.end
     }).collect();
 
-    let max_starts = starts.iter().max().unwrap();
+    let max_ends = ends.iter().max().unwrap();
 
-    let base_size: usize = (*max_starts as usize / 8) + 1;
+    let base_size: usize = (*max_ends as usize / 8) + 1;
+
+    let mut impl_body = quote! {};
 
     for bitfield in bitfields {
         println!("iter field {} @{:?}", bitfield.ident, bitfield.position);
@@ -72,31 +74,91 @@ fn output_struct(name: &Ident, bitfields: &Vec<BitField>) -> quote::Tokens {
             },
             &BitFieldPosition::Range(ref range) => {
                 let from = range.start;
-                let to = range.end;
+                let to = range.end; 
 
-                let size = to - from + 1;
-                let type_mask: u8 = (1 << size) - 1;
-                let mask: u8 = type_mask << (from % 8);
-                let nmask: u8 = !mask;
+                let value_size: usize = (to - from) as usize / 8 + 1;
+                // let value_bit_size = to - from + 1;
 
-                let byteidx: usize = from as usize / 8;
+                let from_byte: usize = from as usize / 8;
+                let to_byte: usize = to as usize / 8;
 
-                let shift = from % 8;
+                let raw_size = to_byte - from_byte + 1;
 
-                let typesize: usize = size as usize / 8 + 1;
+                println!("value_byte_size:{}", value_size);
+                println!("from_byte:{}, to_byte:{}", from_byte, to_byte);
+                println!("raw_size:{}", raw_size);
+
+                
+                // let type_mask: u8 = (1 << type_bit_size) - 1;
+                // let mask: u8 = type_mask << (from % 8);
+                // let nmask: u8 = !mask;
+
+                let bit_shift = from % 8;
+                let bit_end = to % 8;
+
+                let mut setter_body = quote! {
+                    let value_array: [u8;#value_size] = std::convert::Into::into(value);
+                    let mut raw: u8 = 0;
+                };
+
+                setter_body = quote! {
+                    #setter_body
+                    // raw += (value_array[#i] << #bit_shift);
+                };
+
+                for i in 0..raw_size {
+                    
+                    if i < value_size {
+                        setter_body = quote! {
+                            #setter_body
+                            raw |= value_array[#i] << #bit_shift;
+                        }
+                    }
+
+                    if i != 0 {
+                        let i_1 = i - 1;
+                        if bit_shift != 0 {
+                            setter_body = quote! {
+                                #setter_body
+                                raw |= value_array[#i_1] >> (8 - #bit_shift);
+                            }
+                        }
+                    }
+
+                    let mask: u8 = if bit_end == 7 || i != raw_size - 1 {0xff}
+                    else {(1 << (bit_end + 1)) - 1};
+
+                    if mask != 0xff {
+                        setter_body = quote! {
+                            #setter_body
+                            raw &= #mask;
+                        };
+                    }
+
+                    let i_from_byte = i + from_byte;
+
+                    setter_body = quote! {
+                        #setter_body
+                        self.0[#i_from_byte] &= !#mask;
+                        self.0[#i_from_byte] |= raw;
+                    }
+                }
 
                 impl_body = quote! {
                     #impl_body
 
                     pub fn #getter(&self) -> #ty {
-                        let raw: [u8;#typesize] = [(self.0[#byteidx] & #mask) >> #shift];
-                        return std::convert::From::from(raw);
+                        // let raw: [u8;#type_byte_size] = [(self.0[#from_byte] & #mask) >> #shift];
+                        //return std::convert::From::from(raw);
+                        return std::convert::From::from([0u8, 0u8]);
                     }
 
                     pub fn #setter(&mut self, value: #ty) {
-                        let raw: [u8;#typesize] = std::convert::Into::into(value);
-                        self.0[#byteidx] &= #nmask;
-                        self.0[#byteidx] |= (raw[0] & #type_mask) << #shift;
+                        #setter_body
+
+                        /*for idx in 0..*/
+                        // self.0[#from_byte] &= #nmask;
+                        // self.0[#from_byte] |= (raw[0] & #type_mask) << #shift;
                     }
                 }
             },
@@ -179,12 +241,6 @@ pub fn register(_: TokenStream, input: TokenStream) -> TokenStream {
         };
 
         let ident = field.ident.clone().unwrap();
-        let ty_str = match &field.ty {
-            &Ty::Path(_, ref path) => path.segments[0].ident.clone(),
-            _ => panic!("only path types supported"),
-        };
-
-        println!("field {} @{:?}: {}", ident, position, ty_str);
 
         bitfields.push(BitField {position: position, ident: ident, ty: ty});
     }
