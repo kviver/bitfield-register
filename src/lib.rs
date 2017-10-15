@@ -193,7 +193,7 @@ fn output_struct(name: &Ident, bitfields: &Vec<BitField>) -> quote::Tokens {
     };
 
     return quote! {
-        struct #name ([u8;#base_size]);
+        pub struct #name ([u8;#base_size]);
         impl Default for #name {
             fn default() -> Self {
                 return #name ([0;#base_size]);
