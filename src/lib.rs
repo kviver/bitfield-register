@@ -13,7 +13,7 @@ extern crate quote;
 #[derive(Debug)]
 enum BitFieldPosition {
     Single(u8),
-    Range(core::ops::Range<u8>)
+    Range(std::ops::Range<u8>)
 }
 
 #[derive(Debug)]
@@ -262,7 +262,7 @@ pub fn register(_: TokenStream, input: TokenStream) -> TokenStream {
         }
 
         let position: BitFieldPosition = if from.is_some() && to.is_some() {
-            BitFieldPosition::Range(core::ops::Range{start: from.unwrap(), end: to.unwrap()})
+            BitFieldPosition::Range(std::ops::Range{start: from.unwrap(), end: to.unwrap()})
         } else {
             BitFieldPosition::Single(at.unwrap())
         };
