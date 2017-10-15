@@ -13,7 +13,7 @@ extern crate quote;
 #[derive(Debug)]
 enum BitFieldPosition {
     Single(u8),
-    Range(std::ops::Range<u8>)
+    Range(core::ops::Range<u8>)
 }
 
 #[derive(Debug)]
@@ -62,11 +62,11 @@ fn output_struct(name: &Ident, bitfields: &Vec<BitField>) -> quote::Tokens {
 
                     pub fn #getter(&self) -> #ty {
                         let raw: [u8;1] = [(self.0[#byteidx] & #mask) >> #shift];
-                        return std::convert::From::from(raw);
+                        return core::convert::From::from(raw);
                     }
 
                     pub fn #setter(&mut self, value: #ty) {
-                        let raw: [u8;1] = std::convert::Into::into(value);
+                        let raw: [u8;1] = core::convert::Into::into(value);
                         self.0[#byteidx] &= #nmask;
                         self.0[#byteidx] |= (raw[0] & 1) << #shift;
                     }
@@ -97,7 +97,7 @@ fn output_struct(name: &Ident, bitfields: &Vec<BitField>) -> quote::Tokens {
                 let bit_end = to % 8;
 
                 let mut setter_body = quote! {
-                    let value_array: [u8;#value_size] = std::convert::Into::into(value);
+                    let value_array: [u8;#value_size] = core::convert::Into::into(value);
                     let mut raw: u8;
                 };
 
@@ -181,7 +181,7 @@ fn output_struct(name: &Ident, bitfields: &Vec<BitField>) -> quote::Tokens {
 
                     pub fn #getter(&self) -> #ty {
                         #getter_body
-                        return std::convert::From::from(value_array);
+                        return core::convert::From::from(value_array);
                     }
 
                     pub fn #setter(&mut self, value: #ty) {
@@ -262,7 +262,7 @@ pub fn register(_: TokenStream, input: TokenStream) -> TokenStream {
         }
 
         let position: BitFieldPosition = if from.is_some() && to.is_some() {
-            BitFieldPosition::Range(std::ops::Range{start: from.unwrap(), end: to.unwrap()})
+            BitFieldPosition::Range(core::ops::Range{start: from.unwrap(), end: to.unwrap()})
         } else {
             BitFieldPosition::Single(at.unwrap())
         };
