@@ -203,6 +203,11 @@ fn output_struct(name: &Ident, bitfields: &Vec<BitField>) -> quote::Tokens {
 
             #impl_body
         }
+        impl Clone for #name {
+            fn clone(&self) -> Self {
+                return #name (self.0.clone());
+            }
+        }
     }
 }
 
