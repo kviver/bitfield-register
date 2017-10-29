@@ -25,9 +25,8 @@ struct BitField {
 
 fn filled_byte(from:u8, to:u8) -> u8 {
     let mut res = 0;
-    for _ in (from..to) {
-        res |= 1;
-        res <<= 1;
+    for i in (from..to) {
+        res |= 1 << i;
     }
     return res;
 }
