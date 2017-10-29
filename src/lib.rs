@@ -23,6 +23,15 @@ struct BitField {
     ty: Ty
 }
 
+fn filled_byte(from:u8, to:u8) -> u8 {
+    let mut res = 0;
+    for _ in (from..to) {
+        res |= 1;
+        res <<= 1;
+    }
+    return res;
+}
+
 // TODO add tunable bit order for register as a whole
 // TODO add tunable byte order for register as a whole
 fn output_struct(name: &Ident, bitfields: &Vec<BitField>) -> quote::Tokens {
@@ -75,7 +84,9 @@ fn output_struct(name: &Ident, bitfields: &Vec<BitField>) -> quote::Tokens {
             },
             &BitFieldPosition::Range(ref range) => {
                 let from = range.start;
-                let to = range.end; 
+                let to = range.end;
+
+                let bit_size = to - from + 1;
 
                 let value_size: usize = (to - from) as usize / 8 + 1;
                 // let value_bit_size = to - from + 1;
@@ -129,8 +140,20 @@ fn output_struct(name: &Ident, bitfields: &Vec<BitField>) -> quote::Tokens {
                         }
                     }
 
-                    let mask: u8 = if bit_end == 7 || i != raw_size - 1 {0xff}
-                    else {(1 << (bit_end + 1)) - 1};
+                    let mut mask;
+                    if raw_size == 1 {
+                        mask = filled_byte(bit_shift, bit_end);
+                    }
+                    else if i == 0 {
+                        mask = filled_byte(bit_shift, 8);
+                    }
+                    else if i == raw_size {
+                        mask = filled_byte(0, bit_end);
+                    }
+                    else {
+                        mask = filled_byte(0, 8);
+                    }
+                    let mask = mask;
 
                     let i_from_byte = i + from_byte;
 
