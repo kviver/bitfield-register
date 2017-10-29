@@ -176,8 +176,20 @@ fn output_struct(name: &Ident, bitfields: &Vec<BitField>) -> quote::Tokens {
 
                     let i_from_byte = i + from_byte;
 
-                    let mask: u8 = if bit_end == 7 || i != raw_size - 1 {0xff}
-                    else {(1 << (bit_end + 1)) - 1};
+                    let mut mask;
+                    if raw_size == 1 {
+                        mask = filled_byte(bit_shift, bit_end);
+                    }
+                    else if i == 0 {
+                        mask = filled_byte(bit_shift, 8);
+                    }
+                    else if i == raw_size {
+                        mask = filled_byte(0, bit_end);
+                    }
+                    else {
+                        mask = filled_byte(0, 8);
+                    }
+                    let mask = mask;
                     
                     getter_body = quote! { #getter_body
                         value_array[#i] = self.0[#i_from_byte] >> #bit_shift;
