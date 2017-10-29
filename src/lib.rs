@@ -23,7 +23,8 @@ struct BitField {
     ty: Ty
 }
 
-
+// TODO add tunable bit order for register as a whole
+// TODO add tunable byte order for register as a whole
 fn output_struct(name: &Ident, bitfields: &Vec<BitField>) -> quote::Tokens {
     
     let ends: Vec<u8> = bitfields.iter().map(|x| match &x.position {
