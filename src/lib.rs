@@ -178,13 +178,13 @@ fn output_struct(name: &Ident, bitfields: &Vec<BitField>) -> quote::Tokens {
 
                     let mut mask;
                     if raw_size == 1 {
-                        mask = filled_byte(bit_shift, bit_end);
+                        mask = filled_byte(bit_shift, bit_end + 1);
                     }
                     else if i == 0 {
                         mask = filled_byte(bit_shift, 8);
                     }
                     else if i == raw_size {
-                        mask = filled_byte(0, bit_end);
+                        mask = filled_byte(0, bit_end + 1);
                     }
                     else {
                         mask = filled_byte(0, 8);
