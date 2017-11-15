@@ -234,7 +234,7 @@ fn output_struct(name: &Ident, bitfields: &Vec<BitField>) -> quote::Tokens {
         }
         impl From<[u8;#base_size]> for #name {
             fn from(buffer: [u8;#base_size]) -> Self {
-                return Self(buffer);
+                return #name(buffer);
             }
         }
         impl Default for #name {
