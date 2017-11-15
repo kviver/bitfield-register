@@ -229,6 +229,14 @@ fn output_struct(name: &Ident, bitfields: &Vec<BitField>) -> quote::Tokens {
 
     return quote! {
         pub struct #name (pub [u8;#base_size]);
+        impl BitfieldRegister for #name {
+            const REGISTER_SIZE: usize = #base_size;
+        }
+        impl From<[u8;#base_size]> for #name {
+            fn from(buffer: [u8;#base_size]) -> Self {
+                return Self(buffer);
+            }
+        }
         impl Default for #name {
             fn default() -> Self {
                 return #name ([0;#base_size]);
