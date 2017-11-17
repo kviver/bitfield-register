@@ -18,6 +18,20 @@ enum BitFieldPosition {
 }
 
 impl BitFieldPosition {
+    pub fn first_bit(&self) -> usize {
+        match self {
+            &BitFieldPosition::Single(x) => x as usize,
+            &BitFieldPosition::Range(ref range) => range.start as usize
+        }
+    }
+
+    pub fn last_bit(&self) -> usize {
+        match self {
+            &BitFieldPosition::Single(x) => x as usize,
+            &BitFieldPosition::Range(ref range) => (range.end - 1) as usize
+        }
+    }
+
     pub fn len(&self) -> usize {
         match self {
             &BitFieldPosition::Single(_) => 1,
@@ -108,6 +122,25 @@ fn output_struct(name: &Ident, bitfields: &Vec<BitField>) -> quote::Tokens {
 
         let ty = &bitfield.ty;
 
+        let first_bit = bitfield.position.first_bit();
+        let last_bit = bitfield.position.last_bit();
+        let value_byte_len = bitfield.position.byte_len();
+
+        let mut getter_body = quote! {
+            let mut value_array: [u8;#value_byte_len] = [0;#value_byte_len];
+        };
+
+        for i in 0..value_byte_len {
+            let from_bit_i = first_bit + 8 * i;
+            let to_bit_i = usize::min(from_bit_i + 8, last_bit + 1);
+            let read_byte = emit_read_single_byte(quote! { self.0 }, from_bit_i, to_bit_i);
+            getter_body = quote! { #getter_body
+                value_array[#i] = #read_byte;
+            };
+        }
+
+        println!("getter body {}", getter_body);
+
         match &bitfield.position {
             &BitFieldPosition::Single(x) => {
                 let mask: u8 = 1 << (x % 8);
@@ -117,14 +150,12 @@ fn output_struct(name: &Ident, bitfields: &Vec<BitField>) -> quote::Tokens {
 
                 let shift = x % 8;
 
-                let getter_body = emit_read_single_byte(quote! { self.0 }, x as usize, (x+1) as usize);
-
                 impl_body = quote! {
                     #impl_body
 
                     pub fn #getter(&self) -> #ty {
-                        let raw: [u8;1] = [#getter_body];
-                        return bitfield_register::FromBitfield::from_bitfield(raw);
+                        #getter_body
+                        return bitfield_register::FromBitfield::from_bitfield(value_array);
                     }
 
                     pub fn #setter(&mut self, value: #ty) {
@@ -205,21 +236,6 @@ fn output_struct(name: &Ident, bitfields: &Vec<BitField>) -> quote::Tokens {
                         };
                     }
                 }
-
-                let mut getter_body = quote! {
-                    let mut value_array: [u8;#value_byte_len] = [0;#value_byte_len];
-                };
-
-                for i in 0..value_byte_len {
-                    let from_bit_i = from + 8 * i as u8;
-                    let to_bit_i = u8::min(from_bit_i + 8, to + 1);
-                    let read_byte = emit_read_single_byte(quote! { self.0 }, from_bit_i as usize, to_bit_i as usize);
-                    getter_body = quote! { #getter_body
-                        value_array[#i] = #read_byte;
-                    };
-                }
-
-                println!("getter body {}", getter_body);
 
                 impl_body = quote! {
                     #impl_body
