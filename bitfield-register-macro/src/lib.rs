@@ -136,7 +136,7 @@ fn output_struct(name: &Ident, bitfields: &Vec<BitField>) -> quote::Tokens {
             },
             &BitFieldPosition::Range(ref range) => {
                 let from = range.start;
-                let to = range.end;
+                let to = range.end - 1; // end is exclusive
 
                 let value_byte_len = bitfield.position.byte_len();
 
@@ -314,7 +314,7 @@ pub fn register(_: TokenStream, input: TokenStream) -> TokenStream {
         }
 
         let position: BitFieldPosition = if from.is_some() && to.is_some() {
-            BitFieldPosition::Range(std::ops::Range{start: from.unwrap(), end: to.unwrap()})
+            BitFieldPosition::Range(std::ops::Range{start: from.unwrap(), end: to.unwrap() + 1})
         } else {
             BitFieldPosition::Single(at.unwrap())
         };
