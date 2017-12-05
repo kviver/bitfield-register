@@ -3,7 +3,6 @@ name = "bitfield-register"
 version = "0.1.5"
 authors = ["Anper @ Kviver team <mail@s3f.ru>"]
 description = "Rust bitfield library for low-level registers"
-license-file = "LICENSE"
 license = "BSD-2-Clause"
 repository = "https://github.com/kviver/bitfield-register"
 
