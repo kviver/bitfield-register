@@ -1,0 +1,13 @@
+[package]
+name = "bitfield-register"
+version = "0.1.0"
+description = "Rust bitfield library for low-level registers"
+authors = [
+    "Anper @ Kviver team <mail@s3f.ru>",
+    "Mikhail Cheshkov @ Kviver team <mcheshkov@gmail.com>"
+]
+license = "BSD-2-Clause"
+repository = "https://github.com/kviver/bitfield-register"
+
+[dependencies]
+bitfield-register-macro = { version = "0.1.5", path = "../bitfield-register-macro" }
