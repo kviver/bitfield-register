@@ -62,11 +62,11 @@ fn output_struct(name: &Ident, bitfields: &Vec<BitField>) -> quote::Tokens {
 
                     pub fn #getter(&self) -> #ty {
                         let raw: [u8;1] = [(self.0[#byteidx] & #mask) >> #shift];
-                        return core::convert::From::from(raw);
+                        return bitfield_register::FromBitfield::from_bitfield(raw);
                     }
 
                     pub fn #setter(&mut self, value: #ty) {
-                        let raw: [u8;1] = core::convert::Into::into(value);
+                        let raw: [u8;1] = bitfield_register::IntoBitfield::into_bitfield(value);
                         self.0[#byteidx] &= #nmask;
                         self.0[#byteidx] |= (raw[0] & 1) << #shift;
                     }
@@ -97,7 +97,7 @@ fn output_struct(name: &Ident, bitfields: &Vec<BitField>) -> quote::Tokens {
                 let bit_end = to % 8;
 
                 let mut setter_body = quote! {
-                    let value_array: [u8;#value_size] = core::convert::Into::into(value);
+                    let value_array: [u8;#value_size] = bitfield_register::IntoBitfield::into_bitfield(value);
                     let mut raw: u8;
                 };
 
@@ -181,7 +181,7 @@ fn output_struct(name: &Ident, bitfields: &Vec<BitField>) -> quote::Tokens {
 
                     pub fn #getter(&self) -> #ty {
                         #getter_body
-                        return core::convert::From::from(value_array);
+                        return bitfield_register::FromBitfield::from_bitfield(value_array);
                     }
 
                     pub fn #setter(&mut self, value: #ty) {
