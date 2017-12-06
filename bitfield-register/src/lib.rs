@@ -1,3 +1,9 @@
+pub trait BitfieldRegister {
+    type Data;
+    const REGISTER_SIZE: usize;
+    fn data(&self) -> & Self::Data;
+}
+
 pub trait FromBitfield<Array> {
     fn from_bitfield(array:Array) -> Self;
 }

@@ -255,13 +255,24 @@ fn output_struct(name: &Ident, bitfields: &Vec<BitField>) -> quote::Tokens {
 
     return quote! {
         pub struct #name ([u8;#base_size]);
+        impl bitfield_register::BitfieldRegister for #name {
+            type Data = [u8;#base_size];
+            const REGISTER_SIZE: usize = #base_size;
+            fn data(&self) -> &[u8;#base_size] {
+                &self.0
+            }
+        }
+        impl From<[u8;#base_size]> for #name {
+            fn from(buffer: [u8;#base_size]) -> Self {
+                return #name(buffer);
+            }
+        }
         impl Default for #name {
             fn default() -> Self {
                 return #name ([0;#base_size]);
             }
         }
         impl #name {
-
             #impl_body
         }
         impl Clone for #name {
