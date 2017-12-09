@@ -244,6 +244,25 @@ fn output_struct(name: &Ident, bitfields: &Vec<BitField>) -> quote::Tokens {
     }
 }
 
+fn get_register_item_params(field : &Field) -> Option<&Vec<NestedMetaItem>> {
+    let mut result : Option<&Vec<NestedMetaItem>> = None;
+
+    for attr in &field.attrs {
+        if let MetaItem::List(ref attr_ident, ref attr_nest) = attr.value {
+            if attr_ident != "bitfield" {
+                continue;
+            }
+
+            if result.is_some() {
+                panic!("Duplicate register metadata found");
+            }
+            result = Some(&attr_nest);
+        }
+    }
+
+    return result;
+}
+
 #[proc_macro_attribute]
 pub fn register(_: TokenStream, input: TokenStream) -> TokenStream {
     let s = input.to_string();
@@ -269,22 +288,20 @@ pub fn register(_: TokenStream, input: TokenStream) -> TokenStream {
         let mut to: Option<u8> = None;
         let mut at: Option<u8> = None;
 
-        for attr in &field.attrs {
-            if let MetaItem::List(attr_ident, attr_nest) = attr.clone().value {
-                if attr_ident == "bitfield" {
-                    for attr_nest_item in &attr_nest {
-                        match attr_nest_item.clone() {
-                            NestedMetaItem::MetaItem(MetaItem::NameValue(nv_ident, Lit::Int(nv_value, _))) => {
-                                match nv_ident.as_ref() {
-                                    "at" => (at = Some(nv_value as u8)),
-                                    "from" => (from = Some(nv_value as u8)),
-                                    "to" => (to = Some(nv_value as u8)),
-                                    _ => panic!("unsupported param name (use 'at' or 'from'/'to')"),
-                                }
-                            }
-                            _ => {}
+        let meta_item = get_register_item_params(&field);
+
+        if let Some(attr_nest) = meta_item {
+            for attr_nest_item in attr_nest {
+                match attr_nest_item.clone() {
+                    NestedMetaItem::MetaItem(MetaItem::NameValue(nv_ident, Lit::Int(nv_value, _))) => {
+                        match nv_ident.as_ref() {
+                            "at" => (at = Some(nv_value as u8)),
+                            "from" => (from = Some(nv_value as u8)),
+                            "to" => (to = Some(nv_value as u8)),
+                            _ => panic!("unsupported param name (use 'at' or 'from'/'to')"),
                         }
                     }
+                    _ => {}
                 }
             }
         }
