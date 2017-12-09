@@ -148,15 +148,13 @@ fn emit_write_single_byte(to:Tokens, from:Tokens, from_bit:usize, bit_length:u8)
 }
 
 fn output_struct(name: &Ident, bitfields: &Vec<BitField>) -> quote::Tokens {
-    
-    let ends: Vec<u8> = bitfields.iter().map(|x| match &x.position {
-        &BitFieldPosition::Single(x) => x,
-        &BitFieldPosition::Range(ref range) => range.end
-    }).collect();
+    let last_bit = bitfields
+        .iter()
+        .map(|x| x.position.last_bit())
+        .max()
+        .unwrap();
 
-    let max_ends = ends.iter().max().unwrap();
-
-    let base_size: usize = (*max_ends as usize / 8) + 1;
+    let base_size: usize = last_bit / 8 + 1;
 
     let mut impl_body = quote! {};
 
