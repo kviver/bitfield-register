@@ -508,96 +508,410 @@ mod bit15_test {
     }
 }
 
+mod field_0_0 {
+
+    extern crate bitfield_register;
+    extern crate bitfield_register_macro;
+
+    use self::bitfield_register::BitfieldRegister;
+    use super::bitfield_register_macro::register;
+
     #[register()]
-    struct Field00Test {
-        #[bitfield(from=0, to=0)]
+    struct Field00 {
+        #[bitfield(from = 0, to = 0)]
         field: u8,
     }
 
     #[test]
-    fn field_0_0_is_in_lsb() {
-        let mut test = Field00Test::default();
+    fn field_0_0_test() {
+        test_default!(
+            Field00,
+            expected_value = 0,
+            expected_data = [0;1]
+        );
 
-        assert_eq!(test.get_field(), 0);
-        assert_eq!(test.0, [0;1]);
+        test_get!(
+            Field00,
+            from = [0;1],
+            expected_value = 0
+        );
 
-        test.set_field(0b1);
+        test_get!(
+            Field00,
+            from = [0b1;1],
+            expected_value = 1
+        );
 
-        assert_eq!(test.get_field(), 1);
-        assert_eq!(test.0, [0b1]);
+        test_get!(
+            Field00,
+            from = [0b11111110;1],
+            expected_value = 0
+        );
 
-        test.set_field(0b11);
+        test_get!(
+            Field00,
+            from = [0b11111111;1],
+            expected_value = 1
+        );
 
-        assert_eq!(test.get_field(), 0b1);
-        assert_eq!(test.0, [0b1]);
+        test_set!(
+            Field00,
+            from = [0;1],
+            value = 0,
+            expected_value = 0,
+            expected_data = [0;1]
+        );
 
-        test.0 = [0b11111111];
-        assert_eq!(test.get_field(), 0b1);
-        assert_eq!(test.0, [0b11111111]);
+        test_set!(
+            Field00,
+            from = [0;1],
+            value = 1,
+            expected_value = 1,
+            expected_data = [0b1;1]
+        );
+
+        test_set!(
+            Field00,
+            from = [0b11111110;1],
+            value = 0,
+            expected_value = 0,
+            expected_data = [0b11111110;1]
+        );
+
+        test_set!(
+            Field00,
+            from = [0b11111110;1],
+            value = 1,
+            expected_value = 1,
+            expected_data = [0b11111111;1]
+        );
+
+        test_set!(
+            Field00,
+            from = [0b11111111;1],
+            value = 0,
+            expected_value = 0,
+            expected_data = [0b11111110;1]
+        );
+
+        test_set!(
+            Field00,
+            from = [0b11111111;1],
+            value = 1,
+            expected_value = 1,
+            expected_data = [0b11111111;1]
+        );
     }
+}
+
+mod field_0_3 {
+
+    extern crate bitfield_register;
+    extern crate bitfield_register_macro;
+
+    use self::bitfield_register::BitfieldRegister;
+    use super::bitfield_register_macro::register;
 
     #[register()]
-    struct Field03Test {
-        #[bitfield(from=0, to=3)]
+    struct Field03 {
+        #[bitfield(from = 0, to = 3)]
         field: u8,
     }
 
     #[test]
-    fn field_0_3_is_in_lsb() {
-        let mut test = Field03Test::default();
+    fn field_0_3_test() {
+        test_default!(
+            Field03,
+            expected_value = 0,
+            expected_data = [0;1]
+        );
 
-        assert_eq!(test.get_field(), 0);
-        assert_eq!(test.0, [0;1]);
+        test_get!(
+            Field03,
+            from = [0;1],
+            expected_value = 0
+        );
 
-        test.set_field(0b1);
+        test_get!(
+            Field03,
+            from = [0b1;1],
+            expected_value = 1
+        );
 
-        assert_eq!(test.get_field(), 1);
-        assert_eq!(test.0, [0b1]);
+        test_get!(
+            Field03,
+            from = [0b1111;1],
+            expected_value = 0b1111
+        );
 
-        test.set_field(0b1111);
+        test_get!(
+            Field03,
+            from = [0b11110000;1],
+            expected_value = 0
+        );
 
-        assert_eq!(test.get_field(), 0b1111);
-        assert_eq!(test.0, [0b1111]);
+        test_get!(
+            Field03,
+            from = [0b11110001;1],
+            expected_value = 0b1
+        );
 
-        test.set_field(0b11111);
+        test_get!(
+            Field03,
+            from = [0b11111111;1],
+            expected_value = 0b1111
+        );
 
-        assert_eq!(test.get_field(), 0b1111);
-        assert_eq!(test.0, [0b1111]);
+        test_set!(
+            Field03,
+            from = [0;1],
+            value = 0,
+            expected_value = 0,
+            expected_data = [0;1]
+        );
 
-        test.0 = [0b11111111];
-        assert_eq!(test.get_field(), 0b1111);
-        assert_eq!(test.0, [0b11111111]);
+        test_set!(
+            Field03,
+            from = [0;1],
+            value = 1,
+            expected_value = 1,
+            expected_data = [0b1;1]
+        );
+
+        test_set!(
+            Field03,
+            from = [0;1],
+            value = 0b1111,
+            expected_value = 0b1111,
+            expected_data = [0b1111;1]
+        );
+
+        test_set!(
+            Field03,
+            from = [0;1],
+            value = 0b11111,
+            expected_value = 0b1111,
+            expected_data = [0b1111;1]
+        );
+
+        test_set!(
+            Field03,
+            from = [0b11110000;1],
+            value = 0,
+            expected_value = 0,
+            expected_data = [0b11110000;1]
+        );
+
+        test_set!(
+            Field03,
+            from = [0b11110000;1],
+            value = 1,
+            expected_value = 1,
+            expected_data = [0b11110001;1]
+        );
+
+        test_set!(
+            Field03,
+            from = [0b11110000;1],
+            value = 0b1111,
+            expected_value = 0b1111,
+            expected_data = [0b11111111;1]
+        );
+
+        test_set!(
+            Field03,
+            from = [0b11110000;1],
+            value = 0b11111,
+            expected_value = 0b1111,
+            expected_data = [0b11111111;1]
+        );
+
+        test_set!(
+            Field03,
+            from = [0b11111111;1],
+            value = 0,
+            expected_value = 0,
+            expected_data = [0b11110000;1]
+        );
+
+        test_set!(
+            Field03,
+            from = [0b11111111;1],
+            value = 0b1,
+            expected_value = 0b1,
+            expected_data = [0b11110001;1]
+        );
+
+        test_set!(
+            Field03,
+            from = [0b11111111;1],
+            value = 0b1111,
+            expected_value = 0b1111,
+            expected_data = [0b11111111;1]
+        );
+
+        test_set!(
+            Field03,
+            from = [0b11111111;1],
+            value = 0b11111,
+            expected_value = 0b1111,
+            expected_data = [0b11111111;1]
+        );
     }
+}
+
+mod field_2_5 {
+
+    extern crate bitfield_register;
+    extern crate bitfield_register_macro;
+
+    use self::bitfield_register::BitfieldRegister;
+    use super::bitfield_register_macro::register;
 
     #[register()]
-    struct Field25Test {
-        #[bitfield(from=2, to=5)]
+    struct Field25 {
+        #[bitfield(from = 2, to = 5)]
         field: u8,
     }
 
     #[test]
     fn field_2_5_test() {
-        let mut test = Field25Test::default();
+        test_default!(
+            Field25,
+            expected_value = 0,
+            expected_data = [0;1]
+        );
 
-        assert_eq!(test.get_field(), 0);
-        assert_eq!(test.0, [0;1]);
+        test_get!(
+            Field25,
+            from = [0;1],
+            expected_value = 0
+        );
 
-        test.set_field(0b1);
+        test_get!(
+            Field25,
+            from = [0b100;1],
+            expected_value = 1
+        );
 
-        assert_eq!(test.get_field(), 0b1);
-        assert_eq!(test.0, [0b100]);
+        test_get!(
+            Field25,
+            from = [0b111100;1],
+            expected_value = 0b1111
+        );
 
-        test.set_field(0b1111);
+        test_get!(
+            Field25,
+            from = [0b11000011;1],
+            expected_value = 0
+        );
 
-        assert_eq!(test.get_field(), 0b1111);
-        assert_eq!(test.0, [0b111100]);
+        test_get!(
+            Field25,
+            from = [0b11000111;1],
+            expected_value = 0b1
+        );
 
-        test.set_field(0b11111);
+        test_get!(
+            Field25,
+            from = [0b11111111;1],
+            expected_value = 0b1111
+        );
 
-        assert_eq!(test.get_field(), 0b1111);
-        assert_eq!(test.0, [0b111100]);
+        test_set!(
+            Field25,
+            from = [0;1],
+            value = 0,
+            expected_value = 0,
+            expected_data = [0;1]
+        );
 
-        test.0 = [0b11111111];
-        assert_eq!(test.get_field(), 0b1111);
-        assert_eq!(test.0, [0b11111111]);
+        test_set!(
+            Field25,
+            from = [0;1],
+            value = 1,
+            expected_value = 1,
+            expected_data = [0b100;1]
+        );
+
+        test_set!(
+            Field25,
+            from = [0;1],
+            value = 0b1111,
+            expected_value = 0b1111,
+            expected_data = [0b111100;1]
+        );
+
+        test_set!(
+            Field25,
+            from = [0;1],
+            value = 0b11111,
+            expected_value = 0b1111,
+            expected_data = [0b111100;1]
+        );
+
+        test_set!(
+            Field25,
+            from = [0b11000011;1],
+            value = 0,
+            expected_value = 0,
+            expected_data = [0b11000011;1]
+        );
+
+        test_set!(
+            Field25,
+            from = [0b11000011;1],
+            value = 1,
+            expected_value = 1,
+            expected_data = [0b11000111;1]
+        );
+
+        test_set!(
+            Field25,
+            from = [0b11000011;1],
+            value = 0b1111,
+            expected_value = 0b1111,
+            expected_data = [0b11111111;1]
+        );
+
+        test_set!(
+            Field25,
+            from = [0b11000011;1],
+            value = 0b11111,
+            expected_value = 0b1111,
+            expected_data = [0b11111111;1]
+        );
+
+        test_set!(
+            Field25,
+            from = [0b11111111;1],
+            value = 0,
+            expected_value = 0,
+            expected_data = [0b11000011;1]
+        );
+
+        test_set!(
+            Field25,
+            from = [0b11111111;1],
+            value = 0b1,
+            expected_value = 0b1,
+            expected_data = [0b11000111;1]
+        );
+
+        test_set!(
+            Field25,
+            from = [0b11111111;1],
+            value = 0b1111,
+            expected_value = 0b1111,
+            expected_data = [0b11111111;1]
+        );
+
+        test_set!(
+            Field25,
+            from = [0b11111111;1],
+            value = 0b11111,
+            expected_value = 0b1111,
+            expected_data = [0b11111111;1]
+        );
     }
+}
