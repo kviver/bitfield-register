@@ -60,23 +60,23 @@ fn filled_byte(from:u8, to:u8) -> u8 {
     return res;
 }
 
-fn emit_read_single_byte(from:Tokens, from_bit:usize, to_bit:usize) -> Tokens {
-    assert!(to_bit - from_bit <= 8);
+// from - expr of type &[u8], array of bytes, interpreted as array of bits
+// will emit expression of type u8, reading [from_bit, from_bit + bit_length) from array
+fn emit_read_single_byte(from:Tokens, from_bit:usize, bit_length:u8) -> Tokens {
+    assert!(bit_length <= 8);
 
-    let bit_len = (to_bit - from_bit) as u8;
+    let to_bit = from_bit + bit_length as usize;
     let from_byte = (from_bit / 8) as usize;
     let from_bit_mask = (from_bit % 8) as u8;
 
     if from_bit % 8 == 0 {
-        let mask = filled_byte(from_bit_mask, from_bit_mask + bit_len);
+        let mask = filled_byte(from_bit_mask, from_bit_mask + bit_length);
         return quote! { #from[#from_byte] & #mask };
     } else {
         let second_byte = ((to_bit - 1) / 8) as usize;
         if second_byte == from_byte {
-            let mask = filled_byte(from_bit_mask, from_bit_mask + bit_len);
+            let mask = filled_byte(from_bit_mask, from_bit_mask + bit_length);
             let offset = from_bit % 8;
-
-            println!("emit_read_single_byte {} & {} >> {}", from_byte, mask, offset);
 
             return quote! {
                 (#from[#from_byte] & #mask) >> #offset
@@ -88,11 +88,60 @@ fn emit_read_single_byte(from:Tokens, from_bit:usize, to_bit:usize) -> Tokens {
             let second_byte_mask = filled_byte(0, from_bit_mask);
             let second_byte_offset = 8 - first_byte_offset;
 
-            println!("emit_read_single_byte {} & {} >> {} | {} & {} << {}", from_byte, first_byte_mask, first_byte_offset, second_byte, second_byte_mask, second_byte_offset);
-
             return quote! {
                 ((#from[#from_byte] & #first_byte_mask) >> #first_byte_offset)
                 | ((#from[#second_byte] & #second_byte_mask) << #second_byte_offset)
+            };
+        }
+    }
+}
+
+// from - expr of type u8
+// to - expr of type &[u8], array of bytes, interpreted as array of bits
+// will emit expression of type (), writing [from_bit, to_bit) to array
+fn emit_write_single_byte(to:Tokens, from:Tokens, from_bit:usize, bit_length:u8) -> Tokens {
+    assert!(bit_length <= 8);
+
+    let to_bit = from_bit + bit_length as usize;
+    let from_byte = (from_bit / 8) as usize;
+    let from_bit_mask = (from_bit % 8) as u8;
+
+    if from_bit % 8 == 0 {
+        let src_mask = filled_byte(from_bit_mask, from_bit_mask + bit_length);
+        let dst_mask = !src_mask;
+        return quote! { #to[#from_byte] = (#from & #src_mask) | (#to[#from_byte] & #dst_mask) };
+    } else {
+        let second_byte = ((to_bit - 1) / 8) as usize;
+        if second_byte == from_byte {
+            let src_mask = filled_byte(from_bit_mask, from_bit_mask + bit_length);
+            let dst_mask = !src_mask;
+            let offset = from_bit % 8;
+
+            return quote! {
+                #to[#from_byte] = ((#from << #offset) & #src_mask) | (#to[#from_byte] & #dst_mask)
+            };
+        } else {
+            let first_byte_src_mask = filled_byte(from_bit_mask, 8);
+            let first_byte_dst_mask = !first_byte_src_mask;
+            let first_byte_offset = from_bit % 8;
+
+            let second_byte_src_mask = filled_byte(0, from_bit_mask);
+            let second_byte_dst_mask = !second_byte_src_mask;
+            let second_byte_offset = 8 - first_byte_offset;
+
+            let set_first_byte = quote! {
+                #to[#from_byte] = ((#from << #first_byte_offset) & #first_byte_src_mask)
+                    | (#to[#from_byte] & #first_byte_dst_mask)
+            };
+
+            let set_second_byte = quote! {
+                #to[#second_byte] = ((#from >> #second_byte_offset) & #second_byte_src_mask)
+                    | (#to[#second_byte] & #second_byte_dst_mask)
+            };
+
+            return quote! {
+                #set_first_byte;
+                #set_second_byte;
             };
         }
     }
@@ -130,127 +179,41 @@ fn output_struct(name: &Ident, bitfields: &Vec<BitField>) -> quote::Tokens {
             let mut value_array: [u8;#value_byte_len] = [0;#value_byte_len];
         };
 
+        let mut setter_body = quote! {
+            let value_array: [u8;#value_byte_len] = ::bitfield_register::IntoBitfield::into_bitfield(value);
+        };
+
         for i in 0..value_byte_len {
             let from_bit_i = first_bit + 8 * i;
             let to_bit_i = usize::min(from_bit_i + 8, last_bit + 1);
-            let read_byte = emit_read_single_byte(quote! { self.0 }, from_bit_i, to_bit_i);
+            let bit_length = (to_bit_i -  from_bit_i) as u8;
+
+            let read_byte = emit_read_single_byte(quote! { self.0 }, from_bit_i, bit_length);
             getter_body = quote! { #getter_body
                 value_array[#i] = #read_byte;
+            };
+
+            let write_byte = emit_write_single_byte(quote!{ self.0 }, quote! { value_array[#i] }, from_bit_i, bit_length);
+            setter_body = quote! { #setter_body
+                #write_byte;
             };
         }
 
         println!("getter body {}", getter_body);
+        println!("setter body {}", setter_body);
 
-        match &bitfield.position {
-            &BitFieldPosition::Single(x) => {
-                let mask: u8 = 1 << (x % 8);
-                let nmask: u8 = !mask;
+        impl_body = quote! {
+            #impl_body
 
-                let byteidx: usize = x as usize / 8;
+            pub fn #getter(&self) -> #ty {
+                #getter_body
+                return ::bitfield_register::FromBitfield::from_bitfield(value_array);
+            }
 
-                let shift = x % 8;
-
-                impl_body = quote! {
-                    #impl_body
-
-                    pub fn #getter(&self) -> #ty {
-                        #getter_body
-                        return ::bitfield_register::FromBitfield::from_bitfield(value_array);
-                    }
-
-                    pub fn #setter(&mut self, value: #ty) {
-                        let raw: [u8;1] = ::bitfield_register::IntoBitfield::into_bitfield(value);
-                        self.0[#byteidx] &= #nmask;
-                        self.0[#byteidx] |= (raw[0] & 1) << #shift;
-                    }
-                }
-            },
-            &BitFieldPosition::Range(ref range) => {
-                let from = range.start;
-                let to = range.end - 1; // end is exclusive
-
-                let value_byte_len = bitfield.position.byte_len();
-
-                let from_byte: usize = from as usize / 8;
-                let to_byte: usize = to as usize / 8;
-
-                let raw_size = to_byte - from_byte + 1;
-
-                println!("value_byte_len:{}", value_byte_len);
-                println!("from_byte:{}, to_byte:{}", from_byte, to_byte);
-                println!("raw_size:{}", raw_size);
-
-                
-                // let type_mask: u8 = (1 << type_bit_size) - 1;
-                // let mask: u8 = type_mask << (from % 8);
-                // let nmask: u8 = !mask;
-
-                let bit_shift = from % 8;
-                let bit_end = to % 8;
-
-                let mut setter_body = quote! {
-                    let value_array: [u8;#value_byte_len] = ::bitfield_register::IntoBitfield::into_bitfield(value);
-                    let mut raw: u8;
-                };
-
-                for i in 0..raw_size {
-                    
-                    if i < value_byte_len {
-                        if bit_shift == 0 {
-                            setter_body = quote! { #setter_body
-                                 raw = value_array[#i];
-                            }
-                        } else {
-                            setter_body = quote! { #setter_body
-                                raw = value_array[#i] << #bit_shift;
-                            }
-                        }
-                    } else {
-                        setter_body = quote! { #setter_body
-                            raw = 0;
-                        }
-                    }
-
-                    if i != 0 {
-                        let i_1 = i - 1;
-                        if bit_shift != 0 {
-                            setter_body = quote! { #setter_body
-                                raw |= value_array[#i_1] >> (8 - #bit_shift);
-                            }
-                        }
-                    }
-
-                    let mask: u8 = if bit_end == 7 || i != raw_size - 1 {0xff}
-                    else {(1 << (bit_end + 1)) - 1};
-
-                    let i_from_byte = i + from_byte;
-
-                    if mask != 0xff {
-                        setter_body = quote! { #setter_body
-                            self.0[#i_from_byte] &= !#mask;
-                            self.0[#i_from_byte] |= raw & #mask;
-                        };
-                    } else {
-                        setter_body = quote! { #setter_body
-                            self.0[#i_from_byte] = raw;
-                        };
-                    }
-                }
-
-                impl_body = quote! {
-                    #impl_body
-
-                    pub fn #getter(&self) -> #ty {
-                        #getter_body
-                        return ::bitfield_register::FromBitfield::from_bitfield(value_array);
-                    }
-
-                    pub fn #setter(&mut self, value: #ty) {
-                        #setter_body
-                    }
-                }
-            },
-        }
+            pub fn #setter(&mut self, value: #ty) -> () {
+                #setter_body
+            }
+        };
     };
 
     return quote! {
@@ -447,25 +410,58 @@ mod tests {
     #[test]
     fn emit_read_single_byte_test() {
         let from = quote!{arr};
+
         let res = emit_read_single_byte(from.clone(), 0, 8);
         assert_eq!(res, quote!{ #from[0usize] & 255u8 });
 
         let left_mask : u8 = 0b10000000;
-        let from = quote!{arr};
-        let res = emit_read_single_byte(from.clone(), 7, 8);
+        let res = emit_read_single_byte(from.clone(), 7, 1);
         assert_eq!(res, quote!{ (#from[0usize] & #left_mask) >> 7usize });
 
         let left_mask : u8 = 0b00011100;
-        let from = quote!{arr};
-        let res = emit_read_single_byte(from.clone(), 2, 5);
+        let res = emit_read_single_byte(from.clone(), 2, 3);
         assert_eq!(res, quote!{ (#from[0usize] & #left_mask) >> 2usize });
 
 
         let left_mask : u8 = 0b11111110;
         let right_mask : u8 = 0b00000001;
-        let from = quote!{arr};
-        let res = emit_read_single_byte(from.clone(), 9, 17);
+        let res = emit_read_single_byte(from.clone(), 9, 8);
         assert_eq!(res, quote!{ ((#from[1usize] & #left_mask) >> 1usize) | ((#from[2usize] & #right_mask) << 7usize) });
+    }
+
+    #[test]
+    fn emit_write_single_byte_test() {
+        let from = quote!{val};
+        let to = quote!{arr};
+
+        let res = emit_write_single_byte(to.clone(), from.clone(), 0, 8);
+        assert_eq!(res, quote!{ #to[0usize] = (#from & 255u8) | (#to[0usize] & 0u8) });
+
+        let left_src_mask : u8 = 0b00000011;
+        let left_dst_mask : u8 = 0b11111100;
+        let res = emit_write_single_byte(to.clone(), from.clone(), 0, 2);
+        assert_eq!(res, quote!{ #to[0usize] = (#from & #left_src_mask) | (#to[0usize] & #left_dst_mask) });
+
+        let left_src_mask : u8 = 0b10000000;
+        let left_dst_mask : u8 = 0b01111111;
+        let res = emit_write_single_byte(to.clone(), from.clone(), 7, 1);
+        assert_eq!(res, quote!{ #to[0usize] = ((#from << 7usize) & #left_src_mask) | (#to[0usize] & #left_dst_mask) });
+
+        let left_src_mask : u8 = 0b00011100;
+        let left_dst_mask : u8 = 0b11100011;
+        let res = emit_write_single_byte(to.clone(), from.clone(), 2, 3);
+        assert_eq!(res, quote!{ #to[0usize] = ((#from << 2usize) & #left_src_mask) | (#to[0usize] & #left_dst_mask) });
+
+
+        let left_src_mask : u8 = 0b11111110;
+        let left_dst_mask : u8 = 0b00000001;
+        let right_src_mask : u8 = 0b00000001;
+        let right_dst_mask : u8 = 0b11111110;
+        let res = emit_write_single_byte(to.clone(), from.clone(), 9, 8);
+        assert_eq!(res, quote!{
+            #to[1usize] = ((#from << 1usize) & #left_src_mask)  | (#to[1usize] & #left_dst_mask);
+            #to[2usize] = ((#from >> 7usize) & #right_src_mask) | (#to[2usize] & #right_dst_mask);
+        });
     }
 
     #[test]
