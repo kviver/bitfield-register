@@ -155,11 +155,11 @@ fn output_struct(name: &Ident, bitfields: &Vec<BitField>) -> quote::Tokens {
 
                     pub fn #getter(&self) -> #ty {
                         #getter_body
-                        return bitfield_register::FromBitfield::from_bitfield(value_array);
+                        return ::bitfield_register::FromBitfield::from_bitfield(value_array);
                     }
 
                     pub fn #setter(&mut self, value: #ty) {
-                        let raw: [u8;1] = bitfield_register::IntoBitfield::into_bitfield(value);
+                        let raw: [u8;1] = ::bitfield_register::IntoBitfield::into_bitfield(value);
                         self.0[#byteidx] &= #nmask;
                         self.0[#byteidx] |= (raw[0] & 1) << #shift;
                     }
@@ -189,7 +189,7 @@ fn output_struct(name: &Ident, bitfields: &Vec<BitField>) -> quote::Tokens {
                 let bit_end = to % 8;
 
                 let mut setter_body = quote! {
-                    let value_array: [u8;#value_byte_len] = bitfield_register::IntoBitfield::into_bitfield(value);
+                    let value_array: [u8;#value_byte_len] = ::bitfield_register::IntoBitfield::into_bitfield(value);
                     let mut raw: u8;
                 };
 
@@ -242,7 +242,7 @@ fn output_struct(name: &Ident, bitfields: &Vec<BitField>) -> quote::Tokens {
 
                     pub fn #getter(&self) -> #ty {
                         #getter_body
-                        return bitfield_register::FromBitfield::from_bitfield(value_array);
+                        return ::bitfield_register::FromBitfield::from_bitfield(value_array);
                     }
 
                     pub fn #setter(&mut self, value: #ty) {
@@ -255,7 +255,7 @@ fn output_struct(name: &Ident, bitfields: &Vec<BitField>) -> quote::Tokens {
 
     return quote! {
         pub struct #name ([u8;#base_size]);
-        impl bitfield_register::BitfieldRegister for #name {
+        impl ::bitfield_register::BitfieldRegister for #name {
             type Data = [u8;#base_size];
             const REGISTER_SIZE: usize = #base_size;
             fn data(&self) -> &[u8;#base_size] {
