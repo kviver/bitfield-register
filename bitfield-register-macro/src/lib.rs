@@ -309,7 +309,7 @@ pub fn register(_: TokenStream, input: TokenStream) -> TokenStream {
 
         let ident = field.ident.clone().unwrap();
 
-        bitfields.push(BitField {position: position, ident: ident, ty: ty});
+        bitfields.push(BitField {position, ident, ty});
     }
 
     let name = &ast.ident;
