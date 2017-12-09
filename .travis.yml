@@ -5,4 +5,6 @@ rust:
   - nightly
 matrix:
   allow_failures:
-    - rust: nightly
+#    stable and beta don't support proc macros ATM
+    - rust: stable
+    - rust: beta
