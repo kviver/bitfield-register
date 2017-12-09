@@ -3,8 +3,6 @@
 extern crate bitfield_register;
 extern crate bitfield_register_macro;
 
-use self::bitfield_register::BitfieldRegister;
-use self::bitfield_register_macro::register;
 
 macro_rules! test_default {
     ($reg_type:ty, expected_value = $value:expr, expected_data = $data:expr) => (
@@ -31,11 +29,7 @@ macro_rules! test_set {
 }
 
 mod bit0_test {
-
-    extern crate bitfield_register;
-    extern crate bitfield_register_macro;
-
-    use self::bitfield_register::BitfieldRegister;
+    use super::bitfield_register::BitfieldRegister;
     use super::bitfield_register_macro::register;
 
     #[register()]
@@ -127,10 +121,7 @@ mod bit0_test {
 }
 
 mod bit2_test {
-    extern crate bitfield_register;
-    extern crate bitfield_register_macro;
-
-    use self::bitfield_register::BitfieldRegister;
+    use super::bitfield_register::BitfieldRegister;
     use super::bitfield_register_macro::register;
 
     #[register()]
@@ -222,10 +213,7 @@ mod bit2_test {
 }
 
 mod bit7_test {
-    extern crate bitfield_register;
-    extern crate bitfield_register_macro;
-
-    use self::bitfield_register::BitfieldRegister;
+    use super::bitfield_register::BitfieldRegister;
     use super::bitfield_register_macro::register;
 
     #[register()]
@@ -317,11 +305,7 @@ mod bit7_test {
 }
 
 mod bit8_test {
-
-    extern crate bitfield_register;
-    extern crate bitfield_register_macro;
-
-    use self::bitfield_register::BitfieldRegister;
+    use super::bitfield_register::BitfieldRegister;
     use super::bitfield_register_macro::register;
 
     #[register()]
@@ -413,11 +397,7 @@ mod bit8_test {
 }
 
 mod bit15_test {
-
-    extern crate bitfield_register;
-    extern crate bitfield_register_macro;
-
-    use self::bitfield_register::BitfieldRegister;
+    use super::bitfield_register::BitfieldRegister;
     use super::bitfield_register_macro::register;
 
     #[register()]
@@ -509,11 +489,7 @@ mod bit15_test {
 }
 
 mod field_0_0 {
-
-    extern crate bitfield_register;
-    extern crate bitfield_register_macro;
-
-    use self::bitfield_register::BitfieldRegister;
+    use super::bitfield_register::BitfieldRegister;
     use super::bitfield_register_macro::register;
 
     #[register()]
@@ -605,11 +581,7 @@ mod field_0_0 {
 }
 
 mod field_0_3 {
-
-    extern crate bitfield_register;
-    extern crate bitfield_register_macro;
-
-    use self::bitfield_register::BitfieldRegister;
+    use super::bitfield_register::BitfieldRegister;
     use super::bitfield_register_macro::register;
 
     #[register()]
@@ -761,11 +733,7 @@ mod field_0_3 {
 }
 
 mod field_2_5 {
-
-    extern crate bitfield_register;
-    extern crate bitfield_register_macro;
-
-    use self::bitfield_register::BitfieldRegister;
+    use super::bitfield_register::BitfieldRegister;
     use super::bitfield_register_macro::register;
 
     #[register()]
