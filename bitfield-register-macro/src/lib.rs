@@ -263,6 +263,28 @@ fn get_register_item_params(field : &Field) -> Option<&Vec<NestedMetaItem>> {
     return result;
 }
 
+fn parse_register_item_params(params:&Vec<NestedMetaItem>) -> (Option<u8>, Option<u8>, Option<u8>) {
+    let mut from: Option<u8> = None;
+    let mut to: Option<u8> = None;
+    let mut at: Option<u8> = None;
+
+    for param in params {
+        match param.clone() {
+            NestedMetaItem::MetaItem(MetaItem::NameValue(nv_ident, Lit::Int(nv_value, _))) => {
+                match nv_ident.as_ref() {
+                    "at" => (at = Some(nv_value as u8)),
+                    "from" => (from = Some(nv_value as u8)),
+                    "to" => (to = Some(nv_value as u8)),
+                    _ => panic!("unsupported param name (use 'at' or 'from'/'to')"),
+                }
+            }
+            _ => {}
+        }
+    }
+
+    return (from, to, at);
+}
+
 #[proc_macro_attribute]
 pub fn register(_: TokenStream, input: TokenStream) -> TokenStream {
     let s = input.to_string();
@@ -284,27 +306,15 @@ pub fn register(_: TokenStream, input: TokenStream) -> TokenStream {
     for field in &fields {
         let ty = field.clone().ty;
 
-        let mut from: Option<u8> = None;
-        let mut to: Option<u8> = None;
-        let mut at: Option<u8> = None;
+        let meta_item_params = get_register_item_params(&field);
 
-        let meta_item = get_register_item_params(&field);
-
-        if let Some(attr_nest) = meta_item {
-            for attr_nest_item in attr_nest {
-                match attr_nest_item.clone() {
-                    NestedMetaItem::MetaItem(MetaItem::NameValue(nv_ident, Lit::Int(nv_value, _))) => {
-                        match nv_ident.as_ref() {
-                            "at" => (at = Some(nv_value as u8)),
-                            "from" => (from = Some(nv_value as u8)),
-                            "to" => (to = Some(nv_value as u8)),
-                            _ => panic!("unsupported param name (use 'at' or 'from'/'to')"),
-                        }
-                    }
-                    _ => {}
-                }
-            }
+        if meta_item_params.is_none() {
+            panic!("select bit parameters (use #[bitfield(at=x or from=x to=y)])");
         }
+
+        let params = meta_item_params.unwrap();
+
+        let (from, to, at) = parse_register_item_params(params);
 
         if (from.is_some() || to.is_some()) && at.is_some() {
             panic!("select 'at' or 'from'/'to' parameters, not both");
