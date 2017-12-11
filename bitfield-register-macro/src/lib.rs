@@ -244,8 +244,10 @@ fn output_struct(name: &Ident, bitfields: &Vec<BitField>) -> quote::Tokens {
     }
 }
 
-fn get_register_item_params(field : &Field) -> Option<&Vec<NestedMetaItem>> {
-    let mut result : Option<&Vec<NestedMetaItem>> = None;
+fn get_register_item_params(field : &Field) -> Result<&Vec<NestedMetaItem>, &str> {
+    let mut result : Result<&Vec<NestedMetaItem>, &str> = Err(
+        "bitfield() meta not found. select bit parameters (use #[bitfield(at=x or from=x to=y)])"
+    );
 
     for attr in &field.attrs {
         if let MetaItem::List(ref attr_ident, ref attr_nest) = attr.value {
@@ -253,17 +255,17 @@ fn get_register_item_params(field : &Field) -> Option<&Vec<NestedMetaItem>> {
                 continue;
             }
 
-            if result.is_some() {
-                panic!("Duplicate register metadata found");
+            if result.is_ok() {
+                return Err("Duplicate register metadata found");
             }
-            result = Some(&attr_nest);
+            result = Ok(&attr_nest);
         }
     }
 
     return result;
 }
 
-fn parse_register_item_params(params:&Vec<NestedMetaItem>) -> (Option<u8>, Option<u8>, Option<u8>) {
+fn parse_register_item_params(params:&Vec<NestedMetaItem>) -> Result<(Option<u8>, Option<u8>, Option<u8>), &str> {
     let mut from: Option<u8> = None;
     let mut to: Option<u8> = None;
     let mut at: Option<u8> = None;
@@ -275,14 +277,44 @@ fn parse_register_item_params(params:&Vec<NestedMetaItem>) -> (Option<u8>, Optio
                     "at" => (at = Some(nv_value as u8)),
                     "from" => (from = Some(nv_value as u8)),
                     "to" => (to = Some(nv_value as u8)),
-                    _ => panic!("unsupported param name (use 'at' or 'from'/'to')"),
+                    _ => return Err("unsupported param name (use 'at' or 'from'/'to')"),
                 }
             }
             _ => {}
         }
     }
 
-    return (from, to, at);
+    return Ok((from, to, at));
+}
+
+fn parse_bitfield(field:&Field) -> Result<BitField, &str> {
+    let ty = field.ty.clone();
+
+    let meta_item_params = get_register_item_params(&field)?;
+
+    let (from, to, at) = parse_register_item_params(meta_item_params)?;
+
+    if (from.is_some() || to.is_some()) && at.is_some() {
+        return Err("select 'at' or 'from'/'to' parameters, not both");
+    }
+
+    if from.is_some() ^ to.is_some() {
+        return Err("select 'from' and 'to' parameters together");
+    }
+
+    if from.is_none() && to.is_none() && at.is_none() {
+        return Err("select bit parameters (use #[bitfield(at=x or from=x to=y)])");
+    }
+
+    let position: BitFieldPosition = if from.is_some() && to.is_some() {
+        BitFieldPosition::Range(std::ops::Range{start: from.unwrap(), end: to.unwrap() + 1})
+    } else {
+        BitFieldPosition::Single(at.unwrap())
+    };
+
+    let ident = field.ident.clone().unwrap();
+
+    Ok(BitField {position, ident, ty})
 }
 
 #[proc_macro_attribute]
@@ -304,39 +336,8 @@ pub fn register(_: TokenStream, input: TokenStream) -> TokenStream {
     let mut bitfields: Vec<BitField> = vec![];
 
     for field in &fields {
-        let ty = field.clone().ty;
-
-        let meta_item_params = get_register_item_params(&field);
-
-        if meta_item_params.is_none() {
-            panic!("select bit parameters (use #[bitfield(at=x or from=x to=y)])");
-        }
-
-        let params = meta_item_params.unwrap();
-
-        let (from, to, at) = parse_register_item_params(params);
-
-        if (from.is_some() || to.is_some()) && at.is_some() {
-            panic!("select 'at' or 'from'/'to' parameters, not both");
-        }
-
-        if from.is_some() ^ to.is_some() {
-            panic!("select 'from' and 'to' parameters together");
-        }
-
-        if from.is_none() && to.is_none() && at.is_none() {
-            panic!("select bit parameters (use #[bitfield(at=x or from=x to=y)])");
-        }
-
-        let position: BitFieldPosition = if from.is_some() && to.is_some() {
-            BitFieldPosition::Range(std::ops::Range{start: from.unwrap(), end: to.unwrap() + 1})
-        } else {
-            BitFieldPosition::Single(at.unwrap())
-        };
-
-        let ident = field.ident.clone().unwrap();
-
-        bitfields.push(BitField {position, ident, ty});
+        let bitfield = parse_bitfield(field).unwrap();
+        bitfields.push(bitfield);
     }
 
     let name = &ast.ident;
