@@ -85,7 +85,8 @@ fn emit_read_single_byte(from:Tokens, from_bit:usize, bit_length:u8) -> Tokens {
             let first_byte_mask = filled_byte(from_bit_mask, 8);
             let first_byte_offset = from_bit % 8;
 
-            let second_byte_mask = filled_byte(0, from_bit_mask);
+            let bits_left = (to_bit % 8) as u8;
+            let second_byte_mask = filled_byte(0, bits_left);
             let second_byte_offset = 8 - first_byte_offset;
 
             return quote! {
@@ -125,7 +126,8 @@ fn emit_write_single_byte(to:Tokens, from:Tokens, from_bit:usize, bit_length:u8)
             let first_byte_dst_mask = !first_byte_src_mask;
             let first_byte_offset = from_bit % 8;
 
-            let second_byte_src_mask = filled_byte(0, from_bit_mask);
+            let bits_left = (to_bit % 8) as u8;
+            let second_byte_src_mask = filled_byte(0, bits_left);
             let second_byte_dst_mask = !second_byte_src_mask;
             let second_byte_offset = 8 - first_byte_offset;
 
@@ -448,6 +450,10 @@ mod tests {
         let res = emit_read_single_byte(from.clone(), 2, 3);
         assert_eq!(res, quote!{ (#from[0usize] & #left_mask) >> 2usize });
 
+        let left_mask : u8 = 0b11000000;
+        let right_mask : u8 = 0b00000011;
+        let res = emit_read_single_byte(from.clone(), 6, 4);
+        assert_eq!(res, quote!{ ((#from[0usize] & #left_mask) >> 6usize) | ((#from[1usize] & #right_mask) << 2usize) });
 
         let left_mask : u8 = 0b11111110;
         let right_mask : u8 = 0b00000001;
@@ -478,6 +484,15 @@ mod tests {
         let res = emit_write_single_byte(to.clone(), from.clone(), 2, 3);
         assert_eq!(res, quote!{ #to[0usize] = ((#from << 2usize) & #left_src_mask) | (#to[0usize] & #left_dst_mask) });
 
+        let left_src_mask : u8 = 0b11000000;
+        let left_dst_mask : u8 = 0b00111111;
+        let right_src_mask : u8 = 0b00000011;
+        let right_dst_mask : u8 = 0b11111100;
+        let res = emit_write_single_byte(to.clone(), from.clone(), 6, 4);
+        assert_eq!(res, quote!{
+            #to[0usize] = ((#from << 6usize) & #left_src_mask)  | (#to[0usize] & #left_dst_mask);
+            #to[1usize] = ((#from >> 2usize) & #right_src_mask) | (#to[1usize] & #right_dst_mask);
+        });
 
         let left_src_mask : u8 = 0b11111110;
         let left_dst_mask : u8 = 0b00000001;
