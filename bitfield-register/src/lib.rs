@@ -1,3 +1,6 @@
+// Support using Serde without the standard library!
+#![cfg_attr(feature = "no_std", no_std)]
+
 pub trait BitfieldRegister {
     type Data;
     const REGISTER_SIZE: usize;

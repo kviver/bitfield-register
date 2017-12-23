@@ -11,3 +11,9 @@ repository = "https://github.com/kviver/bitfield-register"
 
 [dependencies]
 bitfield-register-macro = { version = "0.1.5", path = "../bitfield-register-macro" }
+
+[features]
+default = []
+
+# Use #![no_std] in library code
+no_std = []
