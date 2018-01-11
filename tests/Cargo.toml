@@ -8,6 +8,7 @@ authors = [
 ]
 license = "MIT"
 repository = "https://github.com/kviver/bitfield-register"
+publish = false
 
 [dependencies]
 bitfield-register = { version = "0.1.5", path = "../bitfield-register" }
