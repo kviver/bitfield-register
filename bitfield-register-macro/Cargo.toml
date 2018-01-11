@@ -1,6 +1,6 @@
 [package]
 name = "bitfield-register-macro"
-version = "0.1.5"
+version = "0.2.0"
 authors = [
     "Anper @ Kviver team <mail@s3f.ru>",
     "Mikhail Cheshkov @ Kviver team <mcheshkov@gmail.com>"
