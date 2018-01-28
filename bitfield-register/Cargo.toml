@@ -11,3 +11,6 @@ repository = "https://github.com/kviver/bitfield-register"
 
 [dependencies]
 bitfield-register-macro = { version = "0.1.5", path = "../bitfield-register-macro" }
+
+[badges]
+travis-ci = { repository = "kviver/bitfield-register" }

@@ -1,6 +1,9 @@
 # bitfield-register
 Rust bitfield library for low-level registers
 
+[![Build Status](https://travis-ci.org/kviver/bitfield-register.svg?branch=master)](https://travis-ci.org/kviver/bitfield-register)
+[![Crates.io](https://img.shields.io/crates/v/bitfield-register.svg)](https://crates.io/crates/bitfield-register)
+
 
 # usage
 ```rust
