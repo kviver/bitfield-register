@@ -42,30 +42,81 @@ impl IntoBitfield<[u8;1]> for bool {
 }
 
 mod tests {
-    use super::FromBitfield;
-    use super::IntoBitfield;
+    use super::{FromBitfield, IntoBitfield};
+
+    macro_rules! test_into {
+        ($value:expr, $expected_array:expr) => (
+            assert_eq!(
+                $value.into_bitfield(),
+                $expected_array
+            );
+        )
+    }
+
+    macro_rules! test_from {
+        ($value_type:ty, $array_len:expr, $array:expr, $expected_value:expr) => (
+            assert_eq!(
+                <$value_type as FromBitfield<[u8;$array_len]>>::from_bitfield($array),
+                $expected_value
+            );
+        )
+    }
 
     #[test]
     fn bool_test() {
-        assert_eq!(
-            false.into_bitfield(),
+        test_into!(
+            false,
             [0;1]
         );
-        assert_eq!(
-            true.into_bitfield(),
+        test_into!(
+            true,
             [1;1]
         );
-        assert_eq!(
-            <bool as FromBitfield<[u8;1]>>::from_bitfield([0;1]),
-            false
+
+        test_from!(
+            bool, 1,
+            [0;1], false
         );
-        assert_eq!(
-            <bool as FromBitfield<[u8;1]>>::from_bitfield([1;1]),
-            true
+        test_from!(
+            bool, 1,
+            [1;1], true
         );
-        assert_eq!(
-            <bool as FromBitfield<[u8;1]>>::from_bitfield([2;1]),
-            false
+        test_from!(
+            bool, 1,
+            [0b11111110;1], false
+        );
+        test_from!(
+            bool, 1,
+            [0b11111111;1], true
+        );
+    }
+
+    #[test]
+    fn u8_test() {
+        test_into!(
+            (0 as u8),
+            [0;1]
+        );
+        test_into!(
+            (1 as u8),
+            [1;1]
+        );
+        test_into!(
+            (0xFF as u8),
+            [0xFF;1]
+        );
+
+        test_from!(
+            u8, 1,
+            [0;1], 0
+        );
+        test_from!(
+            u8, 1,
+            [1;1], 1
+        );
+        test_from!(
+            u8, 1,
+            [0xFF;1], 0xFF
         );
     }
 }
