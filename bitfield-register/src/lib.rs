@@ -39,8 +39,8 @@ impl FromBitfield<[u8;2]> for u16 {
 impl IntoBitfield<[u8;2]> for u16 {
     fn into_bitfield(self) -> [u8;2]{
         return [
-            (self.0 & 0xFF) as u8,
-            (self.0 >> 8 & 0xFF) as u8,
+            (self & 0xFF) as u8,
+            (self >> 8 & 0xFF) as u8,
         ];
     }
 }
@@ -50,9 +50,9 @@ impl IntoBitfield<[u8;2]> for u16 {
 impl IntoBitfield<[u8;3]> for u32 {
     fn into_bitfield(self) -> [u8;3]{
         return [
-            (self.0 & 0xFF) as u8,
-            (self.0 >> 8 & 0xFF) as u8,
-            (self.0 >> 16 & 0xFF) as u8,
+            (self & 0xFF) as u8,
+            (self >> 8 & 0xFF) as u8,
+            (self >> 16 & 0xFF) as u8,
         ];
     }
 }
@@ -70,10 +70,10 @@ impl FromBitfield<[u8;3]> for u32 {
 impl IntoBitfield<[u8;4]> for u32 {
     fn into_bitfield(self) -> [u8;4]{
         return [
-            (self.0 & 0xFF) as u8,
-            (self.0 >> 8 & 0xFF) as u8,
-            (self.0 >> 16 & 0xFF) as u8,
-            (self.0 >> 24 & 0xFF) as u8
+            (self & 0xFF) as u8,
+            (self >> 8 & 0xFF) as u8,
+            (self >> 16 & 0xFF) as u8,
+            (self >> 24 & 0xFF) as u8
         ];
     }
 }
