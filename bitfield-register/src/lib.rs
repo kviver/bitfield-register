@@ -186,28 +186,28 @@ mod tests {
     fn u16_test() {
         test_into!(
             (0 as u16),
-            { static x = &[0x00u8, 0x00u8]; &x },
+            { static X: [u8;2] = [0x00u8, 0x00u8]; X }
         );
         test_into!(
             (1 as u16),
-            { static x = &[0x01u8, 0x00u8]; &x },
+            { static X: [u8;2] = [0x01u8, 0x00u8]; X }
         );
         test_into!(
             (0xFF as u16),
-            { static x = &[0xFFu8, 0x00u8]; &x },
+            { static X: [u8;2] = [0xFFu8, 0x00u8]; X }
         );
 
         test_from!(
             u16, 2,
-            { static x = &[0x00u8, 0x00u8]; &x }, 0
+            { static X: [u8;2] = [0x00u8, 0x00u8]; X }, 0
         );
         test_from!(
             u16, 2,
-            { static x = &[0x01u8, 0x00u8]; &x },, 1
+            { static X: [u8;2] = [0x01u8, 0x00u8]; X }, 1
         );
         test_from!(
             u16, 2,
-            { static x = &[0xFFu8, 0x00u8]; &x }, 0xFF
+            { static X: [u8;2] = [0xFFu8, 0x00u8]; X }, 0xFF
         );
     }
 }
