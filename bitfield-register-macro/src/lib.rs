@@ -161,7 +161,7 @@ fn output_struct(name: &Ident, bitfields: &Vec<BitField>) -> quote::Tokens {
     let mut impl_body = quote! {};
 
     for bitfield in bitfields {
-        println!("iter field {} @{:?}", bitfield.ident, bitfield.position);
+        // println!("iter field {} @{:?}", bitfield.ident, bitfield.position);
 
         let getter_str = format!("get_{}", bitfield.ident.as_ref());
         let getter: Ident = From::from(getter_str.as_str());
@@ -199,8 +199,8 @@ fn output_struct(name: &Ident, bitfields: &Vec<BitField>) -> quote::Tokens {
             };
         }
 
-        println!("getter body {}", getter_body);
-        println!("setter body {}", setter_body);
+        // println!("getter body {}", getter_body);
+        // println!("setter body {}", setter_body);
 
         impl_body = quote! {
             #impl_body
@@ -324,7 +324,7 @@ pub fn register(_: TokenStream, input: TokenStream) -> TokenStream {
     let s = input.to_string();
     let ast = parse_derive_input(&s).unwrap();
 
-    println!("{}", s);
+    // println!("{}", s);
 
     let fields = match ast.body {
         Body::Enum(_) => panic!("enum not supported"),
@@ -384,52 +384,52 @@ mod tests {
         assert_eq!(pos.len(), 1);
         assert_eq!(pos.byte_len(), 1);
 
-        let pos = BitFieldPosition::Range((0..1));
+        let pos = BitFieldPosition::Range(0..1);
 
         assert_eq!(pos.len(), 1);
         assert_eq!(pos.byte_len(), 1);
 
-        let pos = BitFieldPosition::Range((0..5));
+        let pos = BitFieldPosition::Range(0..5);
 
         assert_eq!(pos.len(), 5);
         assert_eq!(pos.byte_len(), 1);
 
-        let pos = BitFieldPosition::Range((0..8));
+        let pos = BitFieldPosition::Range(0..8);
 
         assert_eq!(pos.len(), 8);
         assert_eq!(pos.byte_len(), 1);
 
-        let pos = BitFieldPosition::Range((0..9));
+        let pos = BitFieldPosition::Range(0..9);
 
         assert_eq!(pos.len(), 9);
         assert_eq!(pos.byte_len(), 2);
 
-        let pos = BitFieldPosition::Range((0..10));
+        let pos = BitFieldPosition::Range(0..10);
 
         assert_eq!(pos.len(), 10);
         assert_eq!(pos.byte_len(), 2);
 
-        let pos = BitFieldPosition::Range((0..15));
+        let pos = BitFieldPosition::Range(0..15);
 
         assert_eq!(pos.len(), 15);
         assert_eq!(pos.byte_len(), 2);
 
-        let pos = BitFieldPosition::Range((1..2));
+        let pos = BitFieldPosition::Range(1..2);
 
         assert_eq!(pos.len(), 1);
         assert_eq!(pos.byte_len(), 1);
 
-        let pos = BitFieldPosition::Range((1..8));
+        let pos = BitFieldPosition::Range(1..8);
 
         assert_eq!(pos.len(), 7);
         assert_eq!(pos.byte_len(), 1);
 
-        let pos = BitFieldPosition::Range((1..9));
+        let pos = BitFieldPosition::Range(1..9);
 
         assert_eq!(pos.len(), 8);
         assert_eq!(pos.byte_len(), 1);
 
-        let pos = BitFieldPosition::Range((1..10));
+        let pos = BitFieldPosition::Range(1..10);
 
         assert_eq!(pos.len(), 9);
         assert_eq!(pos.byte_len(), 2);
