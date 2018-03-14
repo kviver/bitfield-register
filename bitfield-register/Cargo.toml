@@ -1,6 +1,6 @@
 [package]
 name = "bitfield-register"
-version = "0.2.0"
+version = "0.2.1"
 description = "Rust bitfield library for low-level registers"
 authors = [
     "Anper @ Kviver team <mail@s3f.ru>",
