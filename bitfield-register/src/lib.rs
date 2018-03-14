@@ -196,6 +196,14 @@ mod tests {
             (0xFF as u16),
             { static X: [u8;2] = [0xFFu8, 0x00u8]; X }
         );
+        test_into!(
+            (0xFF00 as u16),
+            { static X: [u8;2] = [0x00u8, 0xFFu8]; X }
+        );
+        test_into!(
+            (0xFFFF as u16),
+            { static X: [u8;2] = [0xFFu8, 0xFFu8]; X }
+        );
 
         test_from!(
             u16, 2,
@@ -208,6 +216,14 @@ mod tests {
         test_from!(
             u16, 2,
             { static X: [u8;2] = [0xFFu8, 0x00u8]; X }, 0xFF
+        );
+        test_from!(
+            u16, 2,
+            { static X: [u8;2] = [0x00u8, 0xFFu8]; X }, 0xFF00
+        );
+        test_from!(
+            u16, 2,
+            { static X: [u8;2] = [0xFFu8, 0xFFu8]; X }, 0xFFFF
         );
     }
 }
