@@ -6,9 +6,10 @@ authors = [
     "Anper @ Kviver team <mail@s3f.ru>",
     "Mikhail Cheshkov @ Kviver team <mcheshkov@gmail.com>"
 ]
-license = "BSD-2-Clause"
+license = "MIT"
 repository = "https://github.com/kviver/bitfield-register"
+publish = false
 
 [dependencies]
-bitfield-register = { version = "0.1.5", path = "../bitfield-register" }
-bitfield-register-macro = { version = "0.1.5", path = "../bitfield-register-macro" }
+bitfield-register = { version = "0.2.0", path = "../bitfield-register" }
+bitfield-register-macro = { version = "0.2.0", path = "../bitfield-register-macro" }
