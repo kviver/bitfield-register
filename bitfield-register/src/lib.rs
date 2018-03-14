@@ -107,9 +107,10 @@ mod tests {
     use super::{FromBitfield, IntoBitfield};
 
     macro_rules! test_into {
-        ($value:expr, $expected_array:expr) => (
+        ($value:expr, $expected_array:expr, $array_len:expr) => (
+            let array: [u8;$array_len] = $value.into_bitfield();
             assert_eq!(
-                $value.into_bitfield(),
+                array,
                 $expected_array
             );
         )
@@ -128,25 +129,27 @@ mod tests {
     fn bool_test() {
         test_into!(
             false,
-            [0;1]
+            [0;1], 1
         );
-        test_into!(
-            true,
-            [1;1]
-        );
-
         test_from!(
             bool, 1,
             [0;1], false
+        );
+
+        test_into!(
+            true,
+            [1;1], 1
         );
         test_from!(
             bool, 1,
             [1;1], true
         );
+
         test_from!(
             bool, 1,
             [0b11111110;1], false
         );
+
         test_from!(
             bool, 1,
             [0b11111111;1], true
@@ -157,24 +160,25 @@ mod tests {
     fn u8_test() {
         test_into!(
             (0 as u8),
-            [0;1]
+            [0;1], 1
         );
-        test_into!(
-            (1 as u8),
-            [1;1]
-        );
-        test_into!(
-            (0xFF as u8),
-            [0xFF;1]
-        );
-
         test_from!(
             u8, 1,
             [0;1], 0
         );
+
+        test_into!(
+            (1 as u8),
+            [1;1], 1
+        );
         test_from!(
             u8, 1,
             [1;1], 1
+        );
+
+        test_into!(
+            (0xFF as u8),
+            [0xFF;1], 1
         );
         test_from!(
             u8, 1,
@@ -186,44 +190,143 @@ mod tests {
     fn u16_test() {
         test_into!(
             (0 as u16),
-            { static X: [u8;2] = [0x00u8, 0x00u8]; X }
+            { static X: [u8;2] = [0x00u8, 0x00u8]; X }, 2
         );
-        test_into!(
-            (1 as u16),
-            { static X: [u8;2] = [0x01u8, 0x00u8]; X }
-        );
-        test_into!(
-            (0xFF as u16),
-            { static X: [u8;2] = [0xFFu8, 0x00u8]; X }
-        );
-        test_into!(
-            (0xFF00 as u16),
-            { static X: [u8;2] = [0x00u8, 0xFFu8]; X }
-        );
-        test_into!(
-            (0xFFFF as u16),
-            { static X: [u8;2] = [0xFFu8, 0xFFu8]; X }
-        );
-
         test_from!(
             u16, 2,
             { static X: [u8;2] = [0x00u8, 0x00u8]; X }, 0
+        );
+
+        test_into!(
+            (1 as u16),
+            { static X: [u8;2] = [0x01u8, 0x00u8]; X }, 2
         );
         test_from!(
             u16, 2,
             { static X: [u8;2] = [0x01u8, 0x00u8]; X }, 1
         );
+
+        test_into!(
+            (0xFF as u16),
+            { static X: [u8;2] = [0xFFu8, 0x00u8]; X }, 2
+        );
         test_from!(
             u16, 2,
             { static X: [u8;2] = [0xFFu8, 0x00u8]; X }, 0xFF
+        );
+
+        test_into!(
+            (0xFF00 as u16),
+            { static X: [u8;2] = [0x00u8, 0xFFu8]; X }, 2
         );
         test_from!(
             u16, 2,
             { static X: [u8;2] = [0x00u8, 0xFFu8]; X }, 0xFF00
         );
+
+        test_into!(
+            (0xFFFF as u16),
+            { static X: [u8;2] = [0xFFu8, 0xFFu8]; X }, 2
+        );
         test_from!(
             u16, 2,
             { static X: [u8;2] = [0xFFu8, 0xFFu8]; X }, 0xFFFF
+        );
+    }
+
+    #[test]
+    fn u32_3_test() {
+        test_into!(
+            (0 as u32),
+            { static X: [u8;3] = [0x00u8, 0x00u8, 0x00u8]; X }, 3
+        );
+        test_from!(
+            u32, 3,
+            { static X: [u8;3] = [0x00u8, 0x00u8, 0x00u8]; X }, 0
+        );
+
+        test_into!(
+            (1 as u32),
+            { static X: [u8;3] = [0x01u8, 0x00u8, 0x00u8]; X }, 3
+        );
+        test_from!(
+            u32, 3,
+            { static X: [u8;3] = [0x01u8, 0x00u8, 0x00u8]; X }, 1
+        );
+
+        test_into!(
+            (0xFF as u32),
+            { static X: [u8;3] = [0xFFu8, 0x00u8, 0x00u8]; X }, 3
+        );
+        test_from!(
+            u32, 3,
+            { static X: [u8;3] = [0xFFu8, 0x00u8, 0x00u8]; X }, 0xFF
+        );
+
+        test_into!(
+            (0xFF0000 as u32),
+            { static X: [u8;3] = [0x00u8, 0x00u8, 0xFFu8]; X }, 3
+        );
+        test_from!(
+            u32, 3,
+            { static X: [u8;3] = [0x00u8, 0x00u8, 0xFFu8]; X }, 0xFF0000
+        );
+
+        test_into!(
+            (0xFFFFFF as u32),
+            { static X: [u8;3] = [0xFFu8, 0xFFu8, 0xFFu8]; X }, 3
+        );
+        test_from!(
+            u32, 3,
+            { static X: [u8;3] = [0xFFu8, 0xFFu8, 0xFFu8]; X }, 0xFFFFFF
+        );
+    }
+
+    #[test]
+    fn u32_4_test() {
+        test_into!(
+            (0 as u32),
+            { static X: [u8;4] = [0x00u8, 0x00u8, 0x00u8, 0x00u8]; X }, 4
+        );
+        test_from!(
+            u32, 4,
+            { static X: [u8;4] = [0x00u8, 0x00u8, 0x00u8, 0x00u8]; X }, 0
+        );
+
+        test_into!(
+            (1 as u32),
+            { static X: [u8;4] = [0x01u8, 0x00u8, 0x00u8, 0x00u8]; X }, 4
+        );
+        test_from!(
+            u32, 4,
+            { static X: [u8;4] = [0x01u8, 0x00u8, 0x00u8, 0x00u8]; X }, 1
+        );
+
+        test_into!(
+            (0xFF as u32),
+            { static X: [u8;4] = [0xFFu8, 0x00u8, 0x00u8, 0x00u8]; X }, 4
+        );
+        test_from!(
+            u32, 4,
+            { static X: [u8;4] = [0xFFu8, 0x00u8, 0x00u8, 0x00u8]; X }, 0xFF
+        );
+
+        test_into!(
+            (0xFF000000 as u32),
+            { static X: [u8;4] = [0x00u8, 0x00u8, 0x00u8, 0xFFu8]; X }, 4
+        );
+        test_from!(
+            u32, 4,
+            { static X: [u8;4] = [0x00u8, 0x00u8, 0x00u8, 0xFFu8]; X }, 0xFF000000
+        );
+
+        test_into!(
+            (0xFFFFFFFF as u32),
+            { static X: [u8;4] = [0xFFu8, 0xFFu8, 0xFFu8, 0xFFu8]; X }, 4
+        );
+        test_from!(
+            u32, 4,
+            { static X: [u8;4] = [0xFFu8, 0xFFu8, 0xFFu8, 0xFFu8]; X }, 0xFFFFFFFF
         );
     }
 }
